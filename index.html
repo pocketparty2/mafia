@@ -235,6 +235,35 @@
       font-weight: bold;
       color: #c62828;
     }
+
+    .role-reveal-banner {
+      background: #fff3e0;
+      border: 4px solid #e65100;
+      padding: 30px;
+      border-radius: 15px;
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    .role-reveal-banner .name {
+      font-size: 1.8em;
+      font-weight: bold;
+      color: #e65100;
+      margin-bottom: 15px;
+    }
+
+    .role-reveal-banner .role {
+      font-size: 2.5em;
+      font-weight: bold;
+      color: #ff6f00;
+      margin: 15px 0;
+    }
+
+    .role-reveal-banner .instruction {
+      font-size: 1.1em;
+      color: #666;
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
@@ -357,6 +386,17 @@
       <button onclick="confirmElimination()">Confirm & Continue</button>
       <button onclick="startVoting()" style="background: #999; margin-top: 10px;">Change Selection</button>
     </div>
+  </div>
+
+  <!-- Role Reveal Phase -->
+  <div id="roleRevealPhase" class="hidden">
+    <h2 style="margin-bottom: 30px;">Role Revealed</h2>
+    <div class="role-reveal-banner">
+      <div class="name" id="revealedPlayerName"></div>
+      <div class="role" id="revealedPlayerRole"></div>
+      <div class="instruction">has been voted out</div>
+    </div>
+    <button onclick="proceedToNextRound()">Continue</button>
   </div>
 
   <!-- Game Over Phase -->
@@ -485,6 +525,7 @@
 
     document.getElementById('nightPhase').classList.remove('hidden');
     document.getElementById('dayPhase').classList.add('hidden');
+    document.getElementById('roleRevealPhase').classList.add('hidden');
     document.getElementById('gameOver').classList.add('hidden');
 
     const nightTitle = document.getElementById('nightTitle');
@@ -691,6 +732,7 @@
 
     document.getElementById('nightPhase').classList.add('hidden');
     document.getElementById('dayPhase').classList.remove('hidden');
+    document.getElementById('roleRevealPhase').classList.add('hidden');
 
     const dayTitle = document.getElementById('dayTitle');
     const dayInstructions = document.getElementById('dayInstructions');
@@ -763,10 +805,23 @@
 
     checkWinConditions();
     if (gamePhase !== 'gameOver') {
-      round++;
-      speechSynthesis.cancel();
-      startNightPhase();
+      showRoleReveal();
     }
+  }
+
+  function showRoleReveal() {
+    document.getElementById('dayPhase').classList.add('hidden');
+    document.getElementById('roleRevealPhase').classList.remove('hidden');
+
+    const eliminatedPlayer = players[eliminatedThisRound];
+    document.getElementById('revealedPlayerName').textContent = eliminatedPlayer.name;
+    document.getElementById('revealedPlayerRole').textContent = eliminatedPlayer.role;
+  }
+
+  function proceedToNextRound() {
+    round++;
+    speechSynthesis.cancel();
+    startNightPhase();
   }
 
   // ============== WIN CONDITIONS ==============
@@ -785,6 +840,7 @@
     gamePhase = 'gameOver';
     document.getElementById('nightPhase').classList.add('hidden');
     document.getElementById('dayPhase').classList.add('hidden');
+    document.getElementById('roleRevealPhase').classList.add('hidden');
     document.getElementById('gameOver').classList.remove('hidden');
 
     document.getElementById('gameOverTitle').textContent = `${winner} Wins!`;
