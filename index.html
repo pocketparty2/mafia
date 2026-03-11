@@ -582,6 +582,56 @@
       background: #667eea;
       margin-top: 30px;
     }
+
+    .cupid-selection {
+      background: #fff0f6;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 15px 0;
+    }
+
+    .cupid-selection-title {
+      font-weight: bold;
+      margin-bottom: 15px;
+      color: #ff69b4;
+    }
+
+    .cupid-selection-buttons {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .cupid-button {
+      background: white;
+      color: #333;
+      padding: 10px;
+      border: 2px solid #ffb3d9;
+      border-radius: 5px;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .cupid-button:hover {
+      background: #fff0f6;
+      border-color: #ff69b4;
+    }
+
+    .cupid-button.selected {
+      background: #ffb3d9;
+      color: white;
+      border-color: #ff69b4;
+    }
+
+    .cupid-selected-display {
+      background: #ffb3d9;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      text-align: center;
+      color: white;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -630,6 +680,13 @@
           <button class="info-button" onclick="showRoleInfo('jester')">?</button>
         </div>
         <input type="number" id="jesterCount" min="0" max="3" value="0" oninput="validateRoles()">
+      </div>
+      <div class="role-config-item">
+        <div class="role-header">
+          <label>💘 Cupid</label>
+          <button class="info-button" onclick="showRoleInfo('cupid')">?</button>
+        </div>
+        <input type="number" id="cupidCount" min="0" max="3" value="0" oninput="validateRoles()">
       </div>
     </div>
 
@@ -680,6 +737,19 @@
         <div class="sleeping-timer" id="sleepTimer">5</div>
         <p style="color: #aaa;">The night begins in a few moments.</p>
       </div>
+    </div>
+
+    <!-- Cupid Turn -->
+    <div id="cupidTurn" class="hidden">
+      <div style="text-align: center; margin: 20px 0;">
+        <p style="font-size: 1.3em; font-weight: bold; color: #ff69b4;">💘 Cupid - Choose two players to become LOVERS</p>
+        <p style="color: #666; margin-top: 10px;">You can choose yourself! After this, you'll be a regular villager.</p>
+      </div>
+      <div class="cupid-selection">
+        <div class="cupid-selected-display" id="cupidSelectedDisplay" style="display: none;"></div>
+        <div class="cupid-selection-buttons" id="cupidTargets"></div>
+      </div>
+      <button id="cupidSubmitBtn" onclick="submitCupidSelection()" style="display: none;">Confirm Lovers</button>
     </div>
 
     <!-- Mafia Turn -->
@@ -735,7 +805,7 @@
     
     <!-- Dead Person Banner -->
     <div id="deadPersonBanner" class="hidden">
-      <div class="dead-person-banner">
+      <div class="dead-person-banner" id="deadPersonBannerContent">
         💀 <span id="deadPersonName"></span> was found DEAD! 💀
       </div>
     </div>
@@ -790,11 +860,14 @@
     'Detective': '🔍',
     'Doctor': '💊',
     'Jester': '🤡',
+    'Cupid': '💘',
     'Villager': '👥'
   };
 
   // ============== DEATH REASONS ==============
   let playerDeathReasons = {};
+  let lovers = {};
+  let cupidUsed = false;
 
   // ============== ROLE INFO ==============
   const roleDescriptions = {
@@ -804,7 +877,7 @@
     },
     detective: {
       title: '🔍 Detective',
-      description: 'Each night, can investigate one player to learn if they are Mafia or Neutral. Helps the village find the Mafia.'
+      description: 'Each night, can investigate one player to learn if they are Mafia, Neutral, or Village. Helps the village find threats.'
     },
     doctor: {
       title: '💊 Doctor',
@@ -812,7 +885,11 @@
     },
     jester: {
       title: '🤡 Jester',
-      description: 'Wins ALONE by getting voted out during the day. Acts as a wild card trying to get eliminated rather than survive. Does NOT win if murdered or if they survive until the end.'
+      description: 'Wins ALONE by getting voted out during the day. Does NOT win if murdered or if they survive until the end. If a lover of Cupid, can win by surviving!'
+    },
+    cupid: {
+      title: '💘 Cupid',
+      description: 'During Round 1 night, choose two players to become LOVERS (can include yourself). If one lover dies, the other dies too from heartbreak. After choosing, you become a regular villager.'
     }
   };
 
@@ -842,7 +919,8 @@
       mafia: 1,
       detective: 0,
       doctor: 0,
-      jester: 0
+      jester: 0,
+      cupid: 0
     }
   };
 
@@ -873,6 +951,7 @@
     const detective = parseInt(document.getElementById('detectiveCount').value) || 0;
     const doctor = parseInt(document.getElementById('doctorCount').value) || 0;
     const jester = parseInt(document.getElementById('jesterCount').value) || 0;
+    const cupid = parseInt(document.getElementById('cupidCount').value) || 0;
 
     if (mafia < 1) {
       document.getElementById('mafiaCount').value = 1;
@@ -882,12 +961,13 @@
     gameConfig.roles.detective = parseInt(document.getElementById('detectiveCount').value);
     gameConfig.roles.doctor = parseInt(document.getElementById('doctorCount').value);
     gameConfig.roles.jester = parseInt(document.getElementById('jesterCount').value);
+    gameConfig.roles.cupid = parseInt(document.getElementById('cupidCount').value);
 
     updateGameSummary();
   }
 
   function updateGameSummary() {
-    const totalRoles = gameConfig.roles.mafia + gameConfig.roles.detective + gameConfig.roles.doctor + gameConfig.roles.jester;
+    const totalRoles = gameConfig.roles.mafia + gameConfig.roles.detective + gameConfig.roles.doctor + gameConfig.roles.jester + gameConfig.roles.cupid;
     const villagers = gameConfig.numPlayers - totalRoles;
     
     let summary = `<strong>${gameConfig.numPlayers} Players:</strong><br>`;
@@ -895,6 +975,7 @@
     if (gameConfig.roles.detective > 0) summary += `🔍 ${gameConfig.roles.detective} Detective<br>`;
     if (gameConfig.roles.doctor > 0) summary += `💊 ${gameConfig.roles.doctor} Doctor<br>`;
     if (gameConfig.roles.jester > 0) summary += `🤡 ${gameConfig.roles.jester} Jester<br>`;
+    if (gameConfig.roles.cupid > 0) summary += `💘 ${gameConfig.roles.cupid} Cupid<br>`;
     if (villagers > 0) summary += `👥 ${villagers} Villager${villagers > 1 ? 's' : ''}<br><br>`;
     summary += `<strong>Discussion Time:</strong> ${gameConfig.discussionTime} seconds`;
 
@@ -1007,6 +1088,7 @@
   let mafiaMembers = [];
   let detectives = [];
   let doctor = null;
+  let cupid = null;
 
   let dayVoteTarget = null;
   let eliminatedThisRound = null;
@@ -1036,6 +1118,9 @@
     for (let i = 0; i < gameConfig.roles.jester; i++) {
       assignedRoles.push('Jester');
     }
+    for (let i = 0; i < gameConfig.roles.cupid; i++) {
+      assignedRoles.push('Cupid');
+    }
     
     while (assignedRoles.length < numPlayers) {
       assignedRoles.push('Villager');
@@ -1047,9 +1132,12 @@
     mafiaMembers = players.filter(p => p.role === 'Mafia');
     detectives = players.filter(p => p.role === 'Detective');
     doctor = players.find(p => p.role === 'Doctor');
+    cupid = players.find(p => p.role === 'Cupid');
 
     updatePlayerPrompt();
     playerDeathReasons = {};
+    lovers = {};
+    cupidUsed = false;
   }
 
   function updatePlayerPrompt() {
@@ -1100,6 +1188,7 @@
     nightTitle.textContent = `🌙 Night Phase - Round ${round}`;
 
     document.getElementById('sleepingScreen').classList.remove('hidden');
+    document.getElementById('cupidTurn').classList.add('hidden');
     document.getElementById('mafiaTurn').classList.add('hidden');
     document.getElementById('detectiveTurn').classList.add('hidden');
     document.getElementById('detectiveResult').classList.add('hidden');
@@ -1117,7 +1206,9 @@
         clearInterval(sleepInterval);
         document.getElementById('sleepingScreen').classList.add('hidden');
         
-        if (mafiaMembers.some(m => m.alive)) {
+        if (round === 1 && cupid && cupid.alive && !cupidUsed) {
+          startCupidTurn();
+        } else if (mafiaMembers.some(m => m.alive)) {
           startMafiaTurn();
         } else if (detectives.some(d => d.alive)) {
           startDetectiveTurn();
@@ -1128,6 +1219,79 @@
         }
       }
     }, 1000);
+  }
+
+  async function startCupidTurn() {
+    await speak('Cupid, wake up. Choose two players to become lovers.');
+    document.getElementById('cupidTurn').classList.remove('hidden');
+    renderCupidTargets();
+  }
+
+  let cupidSelected = [];
+
+  function renderCupidTargets() {
+    const container = document.getElementById('cupidTargets');
+    container.innerHTML = '';
+    cupidSelected = [];
+    
+    alivePlayers.forEach(p => {
+      const btn = document.createElement('button');
+      btn.className = 'cupid-button';
+      btn.textContent = p.name;
+      btn.onclick = () => {
+        if (cupidSelected.includes(p.id)) {
+          cupidSelected = cupidSelected.filter(id => id !== p.id);
+          btn.classList.remove('selected');
+        } else if (cupidSelected.length < 2) {
+          cupidSelected.push(p.id);
+          btn.classList.add('selected');
+        }
+        updateCupidDisplay();
+      };
+      container.appendChild(btn);
+    });
+    
+    updateCupidDisplay();
+  }
+
+  function updateCupidDisplay() {
+    const display = document.getElementById('cupidSelectedDisplay');
+    const submitBtn = document.getElementById('cupidSubmitBtn');
+    
+    if (cupidSelected.length === 2) {
+      const lover1 = players[cupidSelected[0]].name;
+      const lover2 = players[cupidSelected[1]].name;
+      display.textContent = `💘 ${lover1} ❤️ ${lover2}`;
+      display.style.display = 'block';
+      submitBtn.style.display = 'block';
+    } else {
+      display.style.display = 'none';
+      submitBtn.style.display = 'none';
+    }
+  }
+
+  async function submitCupidSelection() {
+    if (cupidSelected.length !== 2) {
+      alert('Select exactly 2 players!');
+      return;
+    }
+    
+    lovers[cupidSelected[0]] = cupidSelected[1];
+    lovers[cupidSelected[1]] = cupidSelected[0];
+    cupidUsed = true;
+    
+    await speak('Cupid, go to sleep. You are now a regular villager.');
+    document.getElementById('cupidTurn').classList.add('hidden');
+    
+    if (mafiaMembers.some(m => m.alive)) {
+      startMafiaTurn();
+    } else if (detectives.some(d => d.alive)) {
+      startDetectiveTurn();
+    } else if (doctor && doctor.alive) {
+      startDoctorTurn();
+    } else {
+      endNightPhase();
+    }
   }
 
   async function startMafiaTurn() {
@@ -1283,6 +1447,15 @@
       if (doctorTarget !== mafiaVote) {
         target.alive = false;
         playerDeathReasons[mafiaVote] = { round: round, reason: 'Murdered by Mafia' };
+        
+        // Check if the dead person has a lover
+        if (lovers[mafiaVote]) {
+          const loverId = lovers[mafiaVote];
+          if (players[loverId].alive) {
+            players[loverId].alive = false;
+            playerDeathReasons[loverId] = { round: round, reason: 'Died of heartbreak' };
+          }
+        }
       }
     }
 
@@ -1312,12 +1485,25 @@
     const dayTitle = document.getElementById('dayTitle');
     const dayInstructions = document.getElementById('dayInstructions');
     
-    let killedName = 'Nobody';
+    let killedMessages = [];
     eliminatedThisRound = null;
     if (mafiaVote !== null && !players[mafiaVote].alive) {
-      killedName = players[mafiaVote].name;
+      killedMessages.push(players[mafiaVote].name);
+      
+      // Check for heartbreak deaths
+      if (lovers[mafiaVote] && !players[lovers[mafiaVote]].alive) {
+        killedMessages.push(players[lovers[mafiaVote]].name);
+      }
+    }
+    
+    if (killedMessages.length > 0) {
       document.getElementById('deadPersonBanner').classList.remove('hidden');
-      document.getElementById('deadPersonName').textContent = killedName;
+      const banner = document.getElementById('deadPersonBannerContent');
+      if (killedMessages.length === 1) {
+        banner.innerHTML = `💀 ${killedMessages[0]} was found DEAD! 💀`;
+      } else {
+        banner.innerHTML = `💀 ${killedMessages[0]} and ${killedMessages[1]} were found DEAD! 💀`;
+      }
     } else {
       document.getElementById('deadPersonBanner').classList.add('hidden');
     }
@@ -1380,9 +1566,25 @@
     playerDeathReasons[dayVoteTarget] = { round: round, reason: 'Voted Out' };
     alivePlayers = players.filter(p => p.alive);
 
-    // Check if jester won (ONLY if voted out, not murdered)
+    // Check for heartbreak
+    if (lovers[dayVoteTarget] && players[lovers[dayVoteTarget]].alive) {
+      const loverId = lovers[dayVoteTarget];
+      players[loverId].alive = false;
+      playerDeathReasons[loverId] = { round: round, reason: 'Died of heartbreak' };
+      alivePlayers = players.filter(p => p.alive);
+    }
+
+    // Check if jester won (voted out AND not a lover, OR voted out and lover of cupid)
     if (eliminatedPlayer.role === 'Jester') {
-      endGame('Jester', 'The Jester has won by being voted out!');
+      const isLover = lovers[dayVoteTarget] !== undefined;
+      if (!isLover) {
+        endGame('Jester', 'The Jester has won by being voted out!');
+      } else {
+        checkWinConditions();
+        if (gamePhase !== 'gameOver') {
+          showRoleReveal();
+        }
+      }
     } else {
       checkWinConditions();
       if (gamePhase !== 'gameOver') {
@@ -1411,6 +1613,13 @@
   function checkWinConditions() {
     const mafiasAlive = alivePlayers.filter(p => p.role === 'Mafia').length;
     const villagersAlive = alivePlayers.filter(p => p.role !== 'Mafia').length;
+
+    // Check if a jester who is a lover is alive at the end
+    const jesterLovers = alivePlayers.filter(p => p.role === 'Jester' && lovers[p.id] !== undefined);
+    if (jesterLovers.length > 0 && mafiasAlive === 0) {
+      endGame('Jester', 'A Jester lover has won by surviving!');
+      return;
+    }
 
     if (mafiasAlive === 0) {
       endGame('Village', 'The village has defeated the Mafia!');
@@ -1446,105 +1655,4 @@
     const mafiaPlayers = players.filter(p => p.role === 'Mafia');
     if (mafiaPlayers.length > 0) {
       statsHTML += '<div class="alignment-section">';
-      statsHTML += '<div class="alignment-title mafia">🧛 Mafia</div>';
-      statsHTML += '<div class="player-tiles">';
-      mafiaPlayers.forEach(p => {
-        const deathInfo = playerDeathReasons[p.id];
-        const isWinner = winner === 'Mafia';
-        const isDead = !p.alive;
-        const tileClass = isWinner && !isDead ? 'player-tile mafia winner' : (isDead ? 'player-tile mafia dead' : 'player-tile mafia');
-        
-        let statusText = '';
-        if (winner === 'Jester') {
-          statusText = isDead ? (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Game Over') : 'Eliminated by Jester';
-        } else {
-          statusText = p.alive ? 'Survivor' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Round 1<br>Game Over');
-        }
-        
-        statsHTML += `
-          <div class="${tileClass}">
-            <div class="tile-emoji">${roleEmojis[p.role]}</div>
-            <div class="tile-name">${p.name}</div>
-            <div class="tile-info">${statusText}</div>
-          </div>
-        `;
-      });
-      statsHTML += '</div></div>';
-    }
-
-    const jesterPlayers = players.filter(p => p.role === 'Jester');
-    if (jesterPlayers.length > 0) {
-      statsHTML += '<div class="alignment-section">';
-      statsHTML += '<div class="alignment-title neutral">🤡 Neutral</div>';
-      statsHTML += '<div class="player-tiles">';
-      jesterPlayers.forEach(p => {
-        const deathInfo = playerDeathReasons[p.id];
-        const isWinner = winner === 'Jester' && !p.alive;
-        const isDead = !p.alive;
-        const tileClass = isWinner ? 'player-tile neutral winner' : (isDead ? 'player-tile neutral dead' : 'player-tile neutral dead');
-        
-        let statusText = '';
-        if (p.alive) {
-          statusText = 'Failed to win';
-        } else if (deathInfo && deathInfo.reason === 'Voted Out') {
-          statusText = `Round ${deathInfo.round}<br>Voted Out`;
-        } else {
-          statusText = deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Game Over';
-        }
-        
-        statsHTML += `
-          <div class="${tileClass}">
-            <div class="tile-emoji">${roleEmojis[p.role]}</div>
-            <div class="tile-name">${p.name}</div>
-            <div class="tile-info">${statusText}</div>
-          </div>
-        `;
-      });
-      statsHTML += '</div></div>';
-    }
-
-    const villagePlayers = players.filter(p => p.role !== 'Mafia' && p.role !== 'Jester');
-    if (villagePlayers.length > 0) {
-      statsHTML += '<div class="alignment-section">';
-      statsHTML += '<div class="alignment-title village">👥 Village</div>';
-      statsHTML += '<div class="player-tiles">';
-      villagePlayers.forEach(p => {
-        const deathInfo = playerDeathReasons[p.id];
-        const isWinner = winner === 'Village';
-        const isDead = !p.alive;
-        const tileClass = isWinner && !isDead ? 'player-tile village winner' : (isDead ? 'player-tile village dead' : 'player-tile village');
-        
-        let statusText = '';
-        if (winner === 'Jester') {
-          statusText = isDead ? (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Game Over') : 'Eliminated by Jester';
-        } else {
-          statusText = p.alive ? 'Survivor' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Round 1<br>Game Over');
-        }
-        
-        statsHTML += `
-          <div class="${tileClass}">
-            <div class="tile-emoji">${roleEmojis[p.role]}</div>
-            <div class="tile-name">${p.name}</div>
-            <div class="tile-info">${statusText}</div>
-          </div>
-        `;
-      });
-      statsHTML += '</div></div>';
-    }
-
-    document.getElementById('finalStats').innerHTML = statsHTML;
-  }
-
-  // ============== UTILITIES ==============
-  function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
-  }
-
-  updateGameSummary();
-</script>
-</body>
-</html>
+      statsHTML += '<div class="alignment-title mafia">🧛 
