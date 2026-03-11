@@ -291,7 +291,7 @@
     <!-- Detective Turn -->
     <div id="detectiveTurn" class="hidden">
       <div style="text-align: center; margin: 20px 0;">
-        <p style="font-size: 1.3em; font-weight: bold; color: #1976d2;">🔍 Wake up. Who would you like to investigate?</p>
+        <p style="font-size: 1.3em; font-weight: bold; color: #1976d2;">🔍 Who would you like to investigate?</p>
         <p style="color: #666; margin-top: 10px;">Everyone else: keep your eyes closed!</p>
       </div>
       <div id="detectiveTargets" class="player-list"></div>
@@ -308,7 +308,7 @@
     <!-- Doctor Turn -->
     <div id="doctorTurn" class="hidden">
       <div style="text-align: center; margin: 20px 0;">
-        <p style="font-size: 1.3em; font-weight: bold; color: #388e3c;">💊 Wake up. Who would you like to save?</p>
+        <p style="font-size: 1.3em; font-weight: bold; color: #388e3c;">💊 Who would you like to save?</p>
         <p style="color: #666; margin-top: 10px;">Everyone else: keep your eyes closed!</p>
       </div>
       <div id="doctorTargets" class="player-list"></div>
@@ -573,7 +573,7 @@
       return;
     }
 
-    await speak('Wake up. Who would you like to investigate?');
+    await speak('Detective, wake up. Who would you like to investigate?');
     document.getElementById('detectiveTurn').classList.remove('hidden');
     renderDetectiveTargets(aliveDetectives[0]);
   }
@@ -610,7 +610,7 @@
 
   async function acknowledgeInvestigation() {
     document.getElementById('detectiveResult').classList.add('hidden');
-    await speak('Go to sleep.');
+    await speak('Detective, go to sleep.');
     
     const aliveDetectives = detectives.filter(d => d.alive && !detectiveTargets.includes(d.id));
     if (aliveDetectives.length > 0) {
@@ -623,7 +623,7 @@
   }
 
   async function startDoctorTurn() {
-    await speak('Wake up. Who would you like to save?');
+    await speak('Doctor, wake up. Who would you like to save?');
     document.getElementById('doctorTurn').classList.remove('hidden');
     if (doctor && !doctor.alive) {
       document.getElementById('doctorTurn').classList.add('hidden');
@@ -656,7 +656,7 @@
       alert('Select a target!');
       return;
     }
-    await speak('Go to sleep.');
+    await speak('Doctor, go to sleep.');
     document.getElementById('doctorTurn').classList.add('hidden');
     endNightPhase();
   }
