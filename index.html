@@ -523,6 +523,24 @@
       background: #fff0f6;
     }
 
+    .player-tile.dead {
+      background: #d0d0d0;
+      opacity: 0.7;
+    }
+
+    .player-tile.dead.mafia {
+      border-color: #8b0000;
+    }
+
+    .player-tile.dead.village {
+      border-color: #1b5e20;
+    }
+
+    .player-tile.dead.neutral {
+      border-color: #c9184a;
+      background: #d0d0d0;
+    }
+
     .player-tile.winner {
       border: 3px solid gold;
       box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
@@ -541,10 +559,18 @@
       word-wrap: break-word;
     }
 
+    .player-tile.dead .tile-name {
+      color: #666;
+    }
+
     .tile-info {
       font-size: 0.85em;
       color: #666;
       line-height: 1.4;
+    }
+
+    .player-tile.dead .tile-info {
+      color: #555;
     }
 
     .play-again-btn {
@@ -646,7 +672,7 @@
     <div id="sleepingScreen" class="hidden">
       <div class="sleeping-screen">
         <p style="font-size: 1.5em; margin-bottom: 20px;">😴 Everyone close your eyes...</p>
-        <div class="sleeping-timer" id="sleepTimer">10</div>
+        <div class="sleeping-timer" id="sleepTimer">8</div>
         <p style="color: #aaa;">The night begins in a few moments.</p>
       </div>
     </div>
@@ -664,7 +690,7 @@
     <!-- Detective Turn -->
     <div id="detectiveTurn" class="hidden">
       <div style="text-align: center; margin: 20px 0;">
-        <p style="font-size: 1.3em; font-weight: bold; color: #1976d2;">🔍 Who would you like to investigate?</p>
+        <p style="font-size: 1.3em; font-weight: bold; color: #1976d2;">�� Who would you like to investigate?</p>
         <p style="color: #666; margin-top: 10px;">Everyone else: keep your eyes closed!</p>
       </div>
       <div id="detectiveTargets" class="player-list"></div>
@@ -1076,7 +1102,7 @@
     document.getElementById('wakeUpScreen').classList.add('hidden');
 
     await speak('Everybody go to sleep.');
-    let sleepTimer = 10;
+    let sleepTimer = 8;
     document.getElementById('sleepTimer').textContent = sleepTimer;
 
     const sleepInterval = setInterval(() => {
@@ -1413,11 +1439,12 @@
       mafiaPlayers.forEach(p => {
         const deathInfo = playerDeathReasons[p.id];
         const isWinner = winner === 'Mafia';
-        const tileClass = isWinner ? 'player-tile mafia winner' : 'player-tile mafia';
+        const isDead = !p.alive;
+        const tileClass = isWinner && !isDead ? 'player-tile mafia winner' : (isDead ? 'player-tile mafia dead' : 'player-tile mafia');
         
         let statusText = '';
         if (winner === 'Jester') {
-          statusText = p.alive ? 'Eliminated by Jester' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Game Over');
+          statusText = isDead ? (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Game Over') : 'Eliminated by Jester';
         } else {
           statusText = p.alive ? 'Survivor' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Round 1<br>Game Over');
         }
@@ -1441,7 +1468,8 @@
       jesterPlayers.forEach(p => {
         const deathInfo = playerDeathReasons[p.id];
         const isWinner = winner === 'Jester';
-        const tileClass = isWinner ? 'player-tile neutral winner' : 'player-tile neutral';
+        const isDead = !p.alive;
+        const tileClass = isWinner && isDead ? 'player-tile neutral winner' : (isDead ? 'player-tile neutral dead' : 'player-tile neutral');
         
         let statusText = '';
         if (winner === 'Jester') {
@@ -1469,11 +1497,12 @@
       villagePlayers.forEach(p => {
         const deathInfo = playerDeathReasons[p.id];
         const isWinner = winner === 'Village';
-        const tileClass = isWinner ? 'player-tile village winner' : 'player-tile village';
+        const isDead = !p.alive;
+        const tileClass = isWinner && !isDead ? 'player-tile village winner' : (isDead ? 'player-tile village dead' : 'player-tile village');
         
         let statusText = '';
         if (winner === 'Jester') {
-          statusText = p.alive ? 'Eliminated by Jester' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Game Over');
+          statusText = isDead ? (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Game Over') : 'Eliminated by Jester';
         } else {
           statusText = p.alive ? 'Survivor' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Round 1<br>Game Over');
         }
