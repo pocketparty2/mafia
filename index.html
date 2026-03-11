@@ -338,6 +338,87 @@
       text-align: center;
     }
 
+    .role-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .info-button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      flex-shrink: 0;
+    }
+
+    .info-button:hover {
+      background: #45a049;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal.show {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background-color: white;
+      padding: 30px;
+      border-radius: 15px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-content h3 {
+      margin-top: 0;
+      color: #667eea;
+    }
+
+    .modal-content p {
+      margin: 15px 0;
+      font-size: 1em;
+      line-height: 1.5;
+    }
+
+    .modal-close {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1em;
+      width: 100%;
+      margin-top: 15px;
+    }
+
+    .modal-close:hover {
+      background: #5568d3;
+    }
+
     .game-summary {
       background: #e8f5e9;
       padding: 15px;
@@ -372,20 +453,32 @@
     <h3>Role Configuration</h3>
     <div class="role-config">
       <div class="role-config-item">
-        <label>🧛 Mafia</label>
-        <input type="number" id="mafiaCount" min="1" max="8" value="2" oninput="validateRoles()">
+        <div class="role-header">
+          <label>🧛 Mafia</label>
+          <button class="info-button" onclick="showRoleInfo('mafia')">?</button>
+        </div>
+        <input type="number" id="mafiaCount" min="1" max="8" value="1" oninput="validateRoles()">
       </div>
       <div class="role-config-item">
-        <label>🔍 Detective</label>
-        <input type="number" id="detectiveCount" min="0" max="4" value="1" oninput="validateRoles()">
+        <div class="role-header">
+          <label>🔍 Detective</label>
+          <button class="info-button" onclick="showRoleInfo('detective')">?</button>
+        </div>
+        <input type="number" id="detectiveCount" min="0" max="4" value="0" oninput="validateRoles()">
       </div>
       <div class="role-config-item">
-        <label>💊 Doctor</label>
-        <input type="number" id="doctorCount" min="0" max="3" value="1" oninput="validateRoles()">
+        <div class="role-header">
+          <label>💊 Doctor</label>
+          <button class="info-button" onclick="showRoleInfo('doctor')">?</button>
+        </div>
+        <input type="number" id="doctorCount" min="0" max="3" value="0" oninput="validateRoles()">
       </div>
       <div class="role-config-item">
-        <label>🤡 Jester</label>
-        <input type="number" id="jesterCount" min="0" max="3" value="1" oninput="validateRoles()">
+        <div class="role-header">
+          <label>🤡 Jester</label>
+          <button class="info-button" onclick="showRoleInfo('jester')">?</button>
+        </div>
+        <input type="number" id="jesterCount" min="0" max="3" value="0" oninput="validateRoles()">
       </div>
     </div>
 
@@ -395,6 +488,15 @@
     </div>
 
     <button onclick="startPlayerSetup()">Start Game</button>
+  </div>
+
+  <!-- Role Info Modal -->
+  <div id="roleModal" class="modal">
+    <div class="modal-content">
+      <h3 id="roleModalTitle"></h3>
+      <p id="roleModalDescription"></p>
+      <button class="modal-close" onclick="closeRoleInfo()">Close</button>
+    </div>
   </div>
 
   <!-- Player Name & Role Setup -->
@@ -531,15 +633,54 @@
 </div>
 
 <script>
+  // ============== ROLE INFO ==============
+  const roleDescriptions = {
+    mafia: {
+      title: '🧛 Mafia',
+      description: 'Works together at night to eliminate a player. Known to each other. Tries to hide their identity during the day.'
+    },
+    detective: {
+      title: '🔍 Detective',
+      description: 'Each night, can investigate one player to learn if they are Mafia or Village-aligned. Helps the village find the Mafia.'
+    },
+    doctor: {
+      title: '💊 Doctor',
+      description: 'Each night, can protect one player from being killed by the Mafia. Can save themselves or others.'
+    },
+    jester: {
+      title: '🤡 Jester',
+      description: 'Wins by getting voted out during the day. Acts as a wild card trying to get eliminated rather than survive.'
+    }
+  };
+
+  function showRoleInfo(role) {
+    const info = roleDescriptions[role];
+    document.getElementById('roleModalTitle').textContent = info.title;
+    document.getElementById('roleModalDescription').textContent = info.description;
+    document.getElementById('roleModal').classList.add('show');
+  }
+
+  function closeRoleInfo() {
+    document.getElementById('roleModal').classList.remove('show');
+  }
+
+  // Close modal when clicking outside of it
+  window.onclick = function(event) {
+    const modal = document.getElementById('roleModal');
+    if (event.target === modal) {
+      modal.classList.remove('show');
+    }
+  };
+
   // ============== GAME CONFIG ==============
   let gameConfig = {
     discussionTime: 120,
     numPlayers: 7,
     roles: {
-      mafia: 2,
-      detective: 1,
-      doctor: 1,
-      jester: 1
+      mafia: 1,
+      detective: 0,
+      doctor: 0,
+      jester: 0
     }
   };
 
