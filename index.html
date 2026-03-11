@@ -197,6 +197,32 @@
       font-size: 1.3em;
       font-weight: bold;
     }
+
+    .sleeping-screen {
+      background: #1a1a2e;
+      color: white;
+      padding: 40px;
+      border-radius: 10px;
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    .sleeping-timer {
+      font-size: 3em;
+      font-weight: bold;
+      color: #ffd700;
+      margin: 30px 0;
+    }
+
+    .audio-status {
+      background: #e8f5e9;
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+      font-size: 0.9em;
+      text-align: center;
+      color: #2e7d32;
+    }
   </style>
 </head>
 <body>
@@ -230,37 +256,60 @@
   <!-- Night Phase -->
   <div id="nightPhase" class="hidden">
     <h2 id="nightTitle">🌙 Night Phase</h2>
-    <p id="nightInstructions"></p>
-    
+
+    <!-- Sleeping Screen -->
+    <div id="sleepingScreen" class="hidden">
+      <div class="sleeping-screen">
+        <p style="font-size: 1.5em; margin-bottom: 20px;">😴 Everyone close your eyes...</p>
+        <div class="sleeping-timer" id="sleepTimer">10</div>
+        <p style="color: #aaa;">The night begins in a few moments.</p>
+      </div>
+    </div>
+
+    <!-- Mafia Turn -->
     <div id="mafiaTurn" class="hidden">
-      <h3>Mafia Members - Choose someone to eliminate:</h3>
+      <div style="text-align: center; margin: 20px 0;">
+        <p style="font-size: 1.3em; font-weight: bold; color: #c62828;">🧛 Mafia Members - Who would you like to kill?</p>
+        <p style="color: #666; margin-top: 10px;">Everyone else: keep your eyes closed!</p>
+      </div>
       <div id="mafiaTargets" class="player-list"></div>
       <button onclick="submitMafiaKill()">Submit Vote</button>
     </div>
 
+    <!-- Detective Turn -->
     <div id="detectiveTurn" class="hidden">
-      <h3>Detective - Investigate someone to learn their alignment:</h3>
+      <div style="text-align: center; margin: 20px 0;">
+        <p style="font-size: 1.3em; font-weight: bold; color: #1976d2;">🔍 Detective - Who would you like to investigate?</p>
+        <p style="color: #666; margin-top: 10px;">Everyone else: keep your eyes closed!</p>
+      </div>
       <div id="detectiveTargets" class="player-list"></div>
       <button onclick="submitDetectiveInvestigation()">Submit Investigation</button>
     </div>
 
+    <!-- Detective Result -->
     <div id="detectiveResult" class="hidden">
       <p style="margin-bottom: 20px;">You investigated <strong id="investigatedName"></strong>:</p>
       <div class="investigation-result" id="alignmentResult"></div>
-      <button onclick="acknowledgeInvestigation()">Proceed</button>
+      <button onclick="acknowledgeInvestigation()">Got it</button>
     </div>
 
+    <!-- Doctor Turn -->
     <div id="doctorTurn" class="hidden">
-      <h3>Doctor - Save someone:</h3>
+      <div style="text-align: center; margin: 20px 0;">
+        <p style="font-size: 1.3em; font-weight: bold; color: #388e3c;">💊 Doctor - Who would you like to save?</p>
+        <p style="color: #666; margin-top: 10px;">Everyone else: keep your eyes closed!</p>
+      </div>
       <div id="doctorTargets" class="player-list"></div>
       <button onclick="submitDoctorSave()">Submit Protection</button>
     </div>
 
-    <div id="nightWaiting" class="hidden">
-      <p style="text-align: center; font-size: 1.2em; margin: 40px 0;">
-        ⏳ Waiting for other players to make their moves...
-      </p>
-      <p style="text-align: center; color: #999;">Pass the phone along</p>
+    <!-- Wake Up Screen -->
+    <div id="wakeUpScreen" class="hidden">
+      <div class="sleeping-screen">
+        <p style="font-size: 2em; margin-bottom: 20px; color: #ffd700;">☀️ EVERYBODY WAKE UP! ☀️</p>
+        <p style="color: #aaa; margin-bottom: 20px;">The sun is rising...</p>
+        <button onclick="proceedToDayPhase()" style="background: #ffd700; color: #1a1a2e; margin-top: 20px;">Continue</button>
+      </div>
     </div>
   </div>
 
@@ -300,6 +349,20 @@
 </div>
 
 <script>
+  // ============== TEXT-TO-SPEECH FUNCTION ==============
+  function speak(text) {
+    if ('speechSynthesis' in window) {
+      // Cancel any ongoing speech
+      speechSynthesis.cancel();
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      speechSynthesis.speak(utterance);
+    }
+  }
+
   // ============== GAME STATE ==============
   let numPlayers;
   let players = [];
@@ -400,25 +463,43 @@
     nightTitle.textContent = `🌙 Night Phase - Round ${round}`;
 
     // Reset displays
+    document.getElementById('sleepingScreen').classList.remove('hidden');
     document.getElementById('mafiaTurn').classList.add('hidden');
     document.getElementById('detectiveTurn').classList.add('hidden');
     document.getElementById('detectiveResult').classList.add('hidden');
     document.getElementById('doctorTurn').classList.add('hidden');
-    document.getElementById('nightWaiting').classList.add('hidden');
+    document.getElementById('wakeUpScreen').classList.add('hidden');
 
-    // Mafia Turn
-    if (mafiaMembers.some(m => m.alive)) {
-      document.getElementById('mafiaTurn').classList.remove('hidden');
-      renderMafiaTargets();
-    } else if (detective && detective.alive) {
-      currentPlayer = 1; // Skip to detective
-      startDetectiveTurn();
-    } else if (doctor && doctor.alive) {
-      currentPlayer = 2; // Skip to doctor
-      startDoctorTurn();
-    } else {
-      endNightPhase();
-    }
+    // Start sleeping timer and audio
+    speak('Everybody go to sleep.');
+    let sleepTimer = 10;
+    document.getElementById('sleepTimer').textContent = sleepTimer;
+
+    const sleepInterval = setInterval(() => {
+      sleepTimer--;
+      document.getElementById('sleepTimer').textContent = sleepTimer;
+      if (sleepTimer <= 0) {
+        clearInterval(sleepInterval);
+        document.getElementById('sleepingScreen').classList.add('hidden');
+        
+        // Start with Mafia
+        if (mafiaMembers.some(m => m.alive)) {
+          startMafiaTurn();
+        } else if (detective && detective.alive) {
+          startDetectiveTurn();
+        } else if (doctor && doctor.alive) {
+          startDoctorTurn();
+        } else {
+          endNightPhase();
+        }
+      }
+    }, 1000);
+  }
+
+  function startMafiaTurn() {
+    speak('Mafia, wake up. Who would you like to kill?');
+    document.getElementById('mafiaTurn').classList.remove('hidden');
+    renderMafiaTargets();
   }
 
   function renderMafiaTargets() {
@@ -444,18 +525,22 @@
       alert('Select a target!');
       return;
     }
+    speak('Mafia, go to sleep.');
     document.getElementById('mafiaTurn').classList.add('hidden');
     
-    if (detective && detective.alive) {
-      startDetectiveTurn();
-    } else if (doctor && doctor.alive) {
-      startDoctorTurn();
-    } else {
-      endNightPhase();
-    }
+    setTimeout(() => {
+      if (detective && detective.alive) {
+        startDetectiveTurn();
+      } else if (doctor && doctor.alive) {
+        startDoctorTurn();
+      } else {
+        endNightPhase();
+      }
+    }, 1500);
   }
 
   function startDetectiveTurn() {
+    speak('Detective, wake up. Who would you like to investigate?');
     document.getElementById('detectiveTurn').classList.remove('hidden');
     if (detective && !detective.alive) {
       document.getElementById('detectiveTurn').classList.add('hidden');
@@ -488,19 +573,22 @@
       alert('Select a target!');
       return;
     }
+    speak('Detective, go to sleep.');
     document.getElementById('detectiveTurn').classList.add('hidden');
     
-    // Show investigation result
-    const targetPlayer = players[detectiveTarget];
-    const alignment = targetPlayer.role === 'Mafia' ? 'Mafia' : 'Village';
-    
-    document.getElementById('investigatedName').textContent = targetPlayer.name;
-    const resultDiv = document.getElementById('alignmentResult');
-    resultDiv.textContent = alignment;
-    resultDiv.className = `investigation-result ${alignment.toLowerCase()}`;
-    
-    detectiveResult = alignment;
-    document.getElementById('detectiveResult').classList.remove('hidden');
+    setTimeout(() => {
+      // Show investigation result
+      const targetPlayer = players[detectiveTarget];
+      const alignment = targetPlayer.role === 'Mafia' ? 'Mafia' : 'Village';
+      
+      document.getElementById('investigatedName').textContent = targetPlayer.name;
+      const resultDiv = document.getElementById('alignmentResult');
+      resultDiv.textContent = alignment;
+      resultDiv.className = `investigation-result ${alignment.toLowerCase()}`;
+      
+      detectiveResult = alignment;
+      document.getElementById('detectiveResult').classList.remove('hidden');
+    }, 1500);
   }
 
   function acknowledgeInvestigation() {
@@ -514,6 +602,7 @@
   }
 
   function startDoctorTurn() {
+    speak('Doctor, wake up. Who would you like to save?');
     document.getElementById('doctorTurn').classList.remove('hidden');
     if (doctor && !doctor.alive) {
       document.getElementById('doctorTurn').classList.add('hidden');
@@ -546,8 +635,12 @@
       alert('Select a target!');
       return;
     }
+    speak('Doctor, go to sleep.');
     document.getElementById('doctorTurn').classList.add('hidden');
-    endNightPhase();
+    
+    setTimeout(() => {
+      endNightPhase();
+    }, 1500);
   }
 
   function endNightPhase() {
@@ -563,8 +656,14 @@
     checkWinConditions();
 
     if (gamePhase !== 'gameOver') {
-      startDayPhase();
+      document.getElementById('wakeUpScreen').classList.remove('hidden');
+      speak('Everybody wake up!');
     }
+  }
+
+  function proceedToDayPhase() {
+    document.getElementById('wakeUpScreen').classList.add('hidden');
+    startDayPhase();
   }
 
   // ============== DAY PHASE ==============
