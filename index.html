@@ -431,6 +431,125 @@
       margin: 5px 0;
       font-size: 1em;
     }
+
+    /* GAME OVER STYLES */
+    #gameOver {
+      text-align: center;
+    }
+
+    #gameOverTitle {
+      font-size: 2.5em;
+      font-weight: bold;
+      margin-bottom: 30px;
+    }
+
+    #gameOverTitle.village {
+      color: #2e7d32;
+    }
+
+    #gameOverTitle.mafia {
+      color: #c62828;
+    }
+
+    #gameOverTitle.jester {
+      color: #e91e63;
+    }
+
+    #gameOverMessage {
+      font-size: 1.2em;
+      margin-bottom: 30px;
+      color: #666;
+    }
+
+    .stats-container {
+      margin: 30px 0;
+    }
+
+    .alignment-section {
+      margin-bottom: 30px;
+    }
+
+    .alignment-title {
+      font-size: 1.5em;
+      font-weight: bold;
+      margin-bottom: 15px;
+      text-align: left;
+    }
+
+    .alignment-title.mafia {
+      color: #c62828;
+    }
+
+    .alignment-title.neutral {
+      color: #e91e63;
+    }
+
+    .alignment-title.village {
+      color: #2e7d32;
+    }
+
+    .player-tiles {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .player-tile {
+      background: white;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s;
+    }
+
+    .player-tile:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .player-tile.mafia {
+      border-color: #c62828;
+    }
+
+    .player-tile.village {
+      border-color: #2e7d32;
+    }
+
+    .player-tile.neutral {
+      border-color: #e91e63;
+    }
+
+    .player-tile.winner {
+      border: 3px solid gold;
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+    }
+
+    .tile-emoji {
+      font-size: 3em;
+      margin-bottom: 10px;
+    }
+
+    .tile-name {
+      font-size: 1.1em;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 8px;
+      word-wrap: break-word;
+    }
+
+    .tile-info {
+      font-size: 0.85em;
+      color: #666;
+      line-height: 1.4;
+    }
+
+    .play-again-btn {
+      background: #667eea;
+      margin-top: 30px;
+    }
   </style>
 </head>
 <body>
@@ -627,12 +746,24 @@
   <div id="gameOver" class="hidden">
     <h2 id="gameOverTitle">Game Over!</h2>
     <p id="gameOverMessage"></p>
-    <div id="finalStats"></div>
-    <button onclick="location.reload()">Play Again</button>
+    <div id="finalStats" class="stats-container"></div>
+    <button class="play-again-btn" onclick="location.reload()">Play Again</button>
   </div>
 </div>
 
 <script>
+  // ============== ROLE EMOJIS ==============
+  const roleEmojis = {
+    'Mafia': '🧛',
+    'Detective': '🔍',
+    'Doctor': '💊',
+    'Jester': '🤡',
+    'Villager': '👥'
+  };
+
+  // ============== DEATH REASONS ==============
+  let playerDeathReasons = {};
+
   // ============== ROLE INFO ==============
   const roleDescriptions = {
     mafia: {
@@ -664,7 +795,6 @@
     document.getElementById('roleModal').classList.remove('show');
   }
 
-  // Close modal when clicking outside of it
   window.onclick = function(event) {
     const modal = document.getElementById('roleModal');
     if (event.target === modal) {
@@ -712,7 +842,6 @@
     const doctor = parseInt(document.getElementById('doctorCount').value) || 0;
     const jester = parseInt(document.getElementById('jesterCount').value) || 0;
 
-    // Ensure at least 1 mafia
     if (mafia < 1) {
       document.getElementById('mafiaCount').value = 1;
     }
@@ -738,6 +867,78 @@
     summary += `<strong>Discussion Time:</strong> ${gameConfig.discussionTime} seconds`;
 
     document.getElementById('summaryText').innerHTML = summary;
+  }
+
+  // ============== SOUND EFFECTS ==============
+  function playGameOverSound(winner) {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    if (winner === 'Village') {
+      // Confetti sound - high pitched cheerful tones
+      playConfettiSound(audioContext);
+    } else if (winner === 'Jester') {
+      // Giggle sound
+      playGiggleSound(audioContext);
+    } else if (winner === 'Mafia') {
+      // Suspicious/murderous sound
+      playSuspiciousSound(audioContext);
+    }
+  }
+
+  function playConfettiSound(audioContext) {
+    const now = audioContext.currentTime;
+    const notes = [800, 900, 1000, 1100, 1200];
+    
+    notes.forEach((freq, i) => {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.3, now + i * 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.2);
+      
+      osc.start(now + i * 0.1);
+      osc.stop(now + i * 0.1 + 0.2);
+    });
+  }
+
+  function playGiggleSound(audioContext) {
+    const now = audioContext.currentTime;
+    for (let i = 0; i < 4; i++) {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      
+      osc.frequency.value = 400 + Math.random() * 200;
+      gain.gain.setValueAtTime(0.2, now + i * 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.1);
+      
+      osc.start(now + i * 0.15);
+      osc.stop(now + i * 0.15 + 0.1);
+    }
+  }
+
+  function playSuspiciousSound(audioContext) {
+    const now = audioContext.currentTime;
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+    
+    osc.frequency.setValueAtTime(300, now);
+    osc.frequency.exponentialRampToValueAtTime(150, now + 0.5);
+    
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+    
+    osc.start(now);
+    osc.stop(now + 0.5);
   }
 
   // ============== TEXT-TO-SPEECH FUNCTION ==============
@@ -770,7 +971,6 @@
   let round = 0;
   let alivePlayers = [];
 
-  // Night action tracking
   let mafiaVote = null;
   let detectiveTargets = [];
   let detectiveResults = {};
@@ -779,7 +979,6 @@
   let detectives = [];
   let doctor = null;
 
-  // Day action tracking
   let dayVoteTarget = null;
   let eliminatedThisRound = null;
 
@@ -795,7 +994,6 @@
       players.push({ name: '', role: '', alive: true, id: i });
     }
 
-    // Build role list based on config
     let assignedRoles = [];
     for (let i = 0; i < gameConfig.roles.mafia; i++) {
       assignedRoles.push('Mafia');
@@ -810,7 +1008,6 @@
       assignedRoles.push('Jester');
     }
     
-    // Fill remaining with Villagers
     while (assignedRoles.length < numPlayers) {
       assignedRoles.push('Villager');
     }
@@ -818,12 +1015,12 @@
     assignedRoles = shuffleArray(assignedRoles);
     players.forEach((p, i) => p.role = assignedRoles[i]);
 
-    // Identify special roles
     mafiaMembers = players.filter(p => p.role === 'Mafia');
     detectives = players.filter(p => p.role === 'Detective');
     doctor = players.find(p => p.role === 'Doctor');
 
     updatePlayerPrompt();
+    playerDeathReasons = {};
   }
 
   function updatePlayerPrompt() {
@@ -1045,11 +1242,11 @@
   }
 
   async function endNightPhase() {
-    // Execute mafia kill
     if (mafiaVote !== null) {
       const target = players[mafiaVote];
       if (doctorTarget !== mafiaVote) {
         target.alive = false;
+        playerDeathReasons[mafiaVote] = { round: round, reason: 'Murdered by Mafia' };
       }
     }
 
@@ -1143,11 +1340,17 @@
 
     players[dayVoteTarget].alive = false;
     eliminatedThisRound = dayVoteTarget;
+    playerDeathReasons[dayVoteTarget] = { round: round, reason: 'Voted Out' };
     alivePlayers = players.filter(p => p.alive);
 
-    checkWinConditions();
-    if (gamePhase !== 'gameOver') {
-      showRoleReveal();
+    // Check if jester won
+    if (players[dayVoteTarget].role === 'Jester') {
+      endGame('Jester', 'The Jester has won by being voted out!');
+    } else {
+      checkWinConditions();
+      if (gamePhase !== 'gameOver') {
+        showRoleReveal();
+      }
     }
   }
 
@@ -1185,14 +1388,95 @@
     document.getElementById('roleRevealPhase').classList.add('hidden');
     document.getElementById('gameOver').classList.remove('hidden');
 
-    document.getElementById('gameOverTitle').textContent = `${winner} Wins!`;
+    // Set title color and play sound
+    const titleElement = document.getElementById('gameOverTitle');
+    if (winner === 'Village') {
+      titleElement.textContent = `Village Wins! 🎉`;
+      titleElement.classList.add('village');
+    } else if (winner === 'Jester') {
+      titleElement.textContent = `Jester Wins! 🤡`;
+      titleElement.classList.add('jester');
+    } else if (winner === 'Mafia') {
+      titleElement.textContent = `Mafia Wins! 🔪`;
+      titleElement.classList.add('mafia');
+    }
+
+    playGameOverSound(winner);
     document.getElementById('gameOverMessage').textContent = message;
 
-    let stats = '<h3>Final Stats:</h3>';
-    players.forEach(p => {
-      stats += `<p><strong>${p.name}</strong> - ${p.role} ${!p.alive ? '(eliminated)' : '(survivor)'}</p>`;
-    });
-    document.getElementById('finalStats').innerHTML = stats;
+    // Build player tiles by alignment
+    let statsHTML = '';
+
+    // Mafia section
+    const mafiaPlayers = players.filter(p => p.role === 'Mafia');
+    if (mafiaPlayers.length > 0) {
+      statsHTML += '<div class="alignment-section">';
+      statsHTML += '<div class="alignment-title mafia">🧛 Mafia</div>';
+      statsHTML += '<div class="player-tiles">';
+      mafiaPlayers.forEach(p => {
+        const deathInfo = playerDeathReasons[p.id];
+        const isWinner = winner === 'Mafia';
+        const tileClass = isWinner ? 'player-tile mafia winner' : 'player-tile mafia';
+        statsHTML += `
+          <div class="${tileClass}">
+            <div class="tile-emoji">${roleEmojis[p.role]}</div>
+            <div class="tile-name">${p.name}</div>
+            <div class="tile-info">
+              ${p.alive ? 'Survivor' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Round 1<br>Game Over')}
+            </div>
+          </div>
+        `;
+      });
+      statsHTML += '</div></div>';
+    }
+
+    // Neutral section (Jester)
+    const jesterPlayers = players.filter(p => p.role === 'Jester');
+    if (jesterPlayers.length > 0) {
+      statsHTML += '<div class="alignment-section">';
+      statsHTML += '<div class="alignment-title neutral">🤡 Neutral</div>';
+      statsHTML += '<div class="player-tiles">';
+      jesterPlayers.forEach(p => {
+        const deathInfo = playerDeathReasons[p.id];
+        const isWinner = winner === 'Jester';
+        const tileClass = isWinner ? 'player-tile neutral winner' : 'player-tile neutral';
+        statsHTML += `
+          <div class="${tileClass}">
+            <div class="tile-emoji">${roleEmojis[p.role]}</div>
+            <div class="tile-name">${p.name}</div>
+            <div class="tile-info">
+              ${p.alive ? 'Survivor' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Round 1<br>Game Over')}
+            </div>
+          </div>
+        `;
+      });
+      statsHTML += '</div></div>';
+    }
+
+    // Village section
+    const villagePlayers = players.filter(p => p.role !== 'Mafia' && p.role !== 'Jester');
+    if (villagePlayers.length > 0) {
+      statsHTML += '<div class="alignment-section">';
+      statsHTML += '<div class="alignment-title village">👥 Village</div>';
+      statsHTML += '<div class="player-tiles">';
+      villagePlayers.forEach(p => {
+        const deathInfo = playerDeathReasons[p.id];
+        const isWinner = winner === 'Village';
+        const tileClass = isWinner ? 'player-tile village winner' : 'player-tile village';
+        statsHTML += `
+          <div class="${tileClass}">
+            <div class="tile-emoji">${roleEmojis[p.role]}</div>
+            <div class="tile-name">${p.name}</div>
+            <div class="tile-info">
+              ${p.alive ? 'Survivor' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Round 1<br>Game Over')}
+            </div>
+          </div>
+        `;
+      });
+      statsHTML += '</div></div>';
+    }
+
+    document.getElementById('finalStats').innerHTML = statsHTML;
   }
 
   // ============== UTILITIES ==============
@@ -1204,7 +1488,6 @@
     return array;
   }
 
-  // Initialize game summary on load
   updateGameSummary();
 </script>
 </body>
