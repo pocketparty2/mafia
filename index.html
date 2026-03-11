@@ -1,89 +1,661 @@
-<div id="setup">
-  <h1>Moderator-Free Mafia Setup</h1>
-  <label>Number of Players: <input type="number" id="numPlayers" min="4" max="15" value="7"></label><br>
-  <button onclick="startPlayerSetup()">Start</button>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Moderator-Free Mafia</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-<div id="playerCycle" class="hidden">
-  <h2 id="playerPrompt">Player 1, pick up the phone!</h2>
-  <div id="nameInputArea">
-    <input type="text" id="playerNameInput" placeholder="Enter your name">
-    <button onclick="submitName()">Submit</button>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 15px;
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    h1, h2 {
+      color: #333;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      color: #667eea;
+    }
+
+    h2 {
+      font-size: 1.8em;
+    }
+
+    label, p {
+      display: block;
+      margin-bottom: 15px;
+      color: #555;
+      font-size: 1.1em;
+    }
+
+    input[type="number"], input[type="text"] {
+      padding: 10px;
+      border: 2px solid #ddd;
+      border-radius: 5px;
+      font-size: 1em;
+      width: 100%;
+      margin-top: 5px;
+    }
+
+    input[type="number"]:focus, input[type="text"]:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+    }
+
+    button {
+      background: #667eea;
+      color: white;
+      padding: 12px 30px;
+      border: none;
+      border-radius: 5px;
+      font-size: 1.1em;
+      cursor: pointer;
+      margin-top: 15px;
+      width: 100%;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #5568d3;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .phase-section {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .role-reveal {
+      background: #f0f0f0;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+    }
+
+    .role-reveal.mafia {
+      background: #ffcccc;
+    }
+
+    .role-reveal.village {
+      background: #ccffcc;
+    }
+
+    .player-list {
+      background: #f9f9f9;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 15px 0;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .player-item {
+      padding: 10px;
+      margin: 5px 0;
+      background: white;
+      border-radius: 5px;
+      border-left: 4px solid #667eea;
+    }
+
+    .player-item.dead {
+      opacity: 0.5;
+      text-decoration: line-through;
+      border-left-color: #999;
+    }
+
+    .action-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .action-buttons button {
+      margin-top: 0;
+    }
+
+    .timer {
+      font-size: 2em;
+      font-weight: bold;
+      color: #667eea;
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    .vote-display {
+      background: #f0f0f0;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 15px 0;
+    }
+
+    .vote-item {
+      padding: 8px;
+      margin: 5px 0;
+      background: white;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <!-- Setup Phase -->
+  <div id="setup">
+    <h1>🔪 Moderator-Free Mafia 🔪</h1>
+    <label>Number of Players: <input type="number" id="numPlayers" min="4" max="15" value="7"></label>
+    <button onclick="startPlayerSetup()">Start Game</button>
   </div>
-  <div id="roleReveal" class="hidden">
-    <p>Your role is: <span id="playerRole"></span></p>
-    <button onclick="nextPlayer()">Next Player</button>
+
+  <!-- Player Name & Role Setup -->
+  <div id="playerCycle" class="hidden">
+    <div class="phase-section">
+      <h2 id="playerPrompt">Player 1, pick up the phone!</h2>
+      <p style="margin-top: 30px; font-weight: bold;">Pass the phone to the next player after clicking Next.</p>
+    </div>
+    <div id="nameInputArea">
+      <input type="text" id="playerNameInput" placeholder="Enter your name">
+      <button onclick="submitName()">Submit</button>
+    </div>
+    <div id="roleReveal" class="hidden">
+      <div class="role-reveal">
+        <p style="margin: 0; font-size: 1.3em; font-weight: bold;">Your role is:</p>
+        <p id="playerRole" style="margin: 10px 0; font-size: 2em; font-weight: bold; color: #667eea;"></p>
+      </div>
+      <button onclick="nextPlayer()">Next Player</button>
+    </div>
+  </div>
+
+  <!-- Night Phase -->
+  <div id="nightPhase" class="hidden">
+    <h2 id="nightTitle">🌙 Night Phase</h2>
+    <p id="nightInstructions"></p>
+    
+    <div id="mafiaTurn" class="hidden">
+      <h3>Mafia Members - Choose someone to eliminate:</h3>
+      <div id="mafiaTargets" class="player-list"></div>
+      <button onclick="submitMafiaKill()">Submit Vote</button>
+    </div>
+
+    <div id="detectiveTurn" class="hidden">
+      <h3>Detective - Investigate someone:</h3>
+      <div id="detectiveTargets" class="player-list"></div>
+      <button onclick="submitDetectiveInvestigation()">Submit Investigation</button>
+    </div>
+
+    <div id="doctorTurn" class="hidden">
+      <h3>Doctor - Save someone:</h3>
+      <div id="doctorTargets" class="player-list"></div>
+      <button onclick="submitDoctorSave()">Submit Protection</button>
+    </div>
+
+    <div id="nightWaiting" class="hidden">
+      <p style="text-align: center; font-size: 1.2em; margin: 40px 0;">
+        ⏳ Waiting for other players to make their moves...
+      </p>
+      <p style="text-align: center; color: #999;">Pass the phone along</p>
+    </div>
+  </div>
+
+  <!-- Day Phase -->
+  <div id="dayPhase" class="hidden">
+    <h2 id="dayTitle">☀️ Day Phase</h2>
+    <p id="dayInstructions"></p>
+    
+    <div id="discussionPhase" class="hidden">
+      <p style="text-align: center; margin: 20px 0;">
+        You have <span id="discussionTimer">120</span> seconds to discuss and vote.
+      </p>
+      <button onclick="startVoting()">Start Voting</button>
+    </div>
+
+    <div id="votingPhase" class="hidden">
+      <p>Who do you vote to eliminate?</p>
+      <div id="voteTargets" class="player-list"></div>
+      <div id="voteResults" class="hidden">
+        <h3>Vote Tally:</h3>
+        <div id="voteDisplay" class="vote-display"></div>
+        <button onclick="revealVote()">Reveal Results</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over Phase -->
+  <div id="gameOver" class="hidden">
+    <h2 id="gameOverTitle">Game Over!</h2>
+    <p id="gameOverMessage"></p>
+    <div id="finalStats"></div>
+    <button onclick="location.reload()">Play Again</button>
   </div>
 </div>
 
 <script>
-// Players data
-let numPlayers;
-let players = [];
-let roleList = ['Mafia','Mafia','Detective','Doctor','Jester']; // default roles, extra players will be Villagers
-let currentPlayer = 0;
+  // ============== GAME STATE ==============
+  let numPlayers;
+  let players = [];
+  let roleList = ['Mafia', 'Mafia', 'Detective', 'Doctor', 'Jester'];
+  let currentPlayer = 0;
+  let gamePhase = 'setup'; // setup, naming, night, day, gameOver
+  let round = 0;
+  let alivePlayers = [];
 
-function startPlayerSetup() {
-  numPlayers = parseInt(document.getElementById('numPlayers').value);
-  // hide setup, show player cycle
-  document.getElementById('setup').classList.add('hidden');
-  document.getElementById('playerCycle').classList.remove('hidden');
+  // Night action tracking
+  let mafiaVote = null;
+  let detectiveTarget = null;
+  let doctorTarget = null;
+  let mafiaMembers = [];
+  let detective = null;
+  let doctor = null;
 
-  // Prepare players array
-  players = [];
-  for (let i = 0; i < numPlayers; i++) {
-    players.push({name:'', role:''});
+  // Day action tracking
+  let dayVotes = {};
+
+  // ============== SETUP PHASE ==============
+  function startPlayerSetup() {
+    numPlayers = parseInt(document.getElementById('numPlayers').value);
+    if (numPlayers < 4) {
+      alert('Need at least 4 players!');
+      return;
+    }
+
+    document.getElementById('setup').classList.add('hidden');
+    document.getElementById('playerCycle').classList.remove('hidden');
+
+    players = [];
+    for (let i = 0; i < numPlayers; i++) {
+      players.push({ name: '', role: '', alive: true, id: i });
+    }
+
+    let assignedRoles = [...roleList];
+    while (assignedRoles.length < numPlayers) {
+      assignedRoles.push('Villager');
+    }
+    assignedRoles = shuffleArray(assignedRoles);
+    players.forEach((p, i) => p.role = assignedRoles[i]);
+
+    // Identify special roles
+    mafiaMembers = players.filter(p => p.role === 'Mafia');
+    detective = players.find(p => p.role === 'Detective');
+    doctor = players.find(p => p.role === 'Doctor');
+
+    updatePlayerPrompt();
   }
 
-  // Prepare role list
-  let assignedRoles = [...roleList];
-  while (assignedRoles.length < numPlayers) {
-    assignedRoles.push('Villager');
+  function updatePlayerPrompt() {
+    document.getElementById('playerPrompt').textContent = `Player ${currentPlayer + 1}, pick up the phone!`;
   }
-  assignedRoles = shuffleArray(assignedRoles);
 
-  // Assign roles
-  players.forEach((p,i)=>p.role=assignedRoles[i]);
+  function submitName() {
+    const nameInput = document.getElementById('playerNameInput');
+    const name = nameInput.value.trim() || `Player ${currentPlayer + 1}`;
+    players[currentPlayer].name = name;
 
-  // Set prompt for first player
-  document.getElementById('playerPrompt').textContent = `Player 1, pick up the phone!`;
-}
-
-function submitName() {
-  const nameInput = document.getElementById('playerNameInput');
-  const name = nameInput.value.trim() || `Player ${currentPlayer+1}`;
-  players[currentPlayer].name = name;
-
-  // Show role
-  document.getElementById('nameInputArea').classList.add('hidden');
-  document.getElementById('roleReveal').classList.remove('hidden');
-  document.getElementById('playerRole').textContent = players[currentPlayer].role;
-
-  // Optionally: you can add audio for the role here
-}
-
-function nextPlayer() {
-  // Reset input area
-  document.getElementById('nameInputArea').classList.remove('hidden');
-  document.getElementById('playerNameInput').value = '';
-  document.getElementById('roleReveal').classList.add('hidden');
-
-  currentPlayer++;
-  if(currentPlayer < numPlayers){
-    document.getElementById('playerPrompt').textContent = `${currentPlayer+1}º Player, pick up the phone!`;
-  } else {
-    document.getElementById('playerCycle').classList.add('hidden');
-    // Move to night phase here
-    startNightPhase();
+    document.getElementById('nameInputArea').classList.add('hidden');
+    document.getElementById('roleReveal').classList.remove('hidden');
+    document.getElementById('playerRole').textContent = players[currentPlayer].role;
   }
-}
 
-// Utility: shuffle array
-function shuffleArray(array){
-  for(let i=array.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [array[i], array[j]] = [array[j], array[i]];
+  function nextPlayer() {
+    document.getElementById('nameInputArea').classList.remove('hidden');
+    document.getElementById('playerNameInput').value = '';
+    document.getElementById('roleReveal').classList.add('hidden');
+
+    currentPlayer++;
+    if (currentPlayer < numPlayers) {
+      updatePlayerPrompt();
+    } else {
+      document.getElementById('playerCycle').classList.add('hidden');
+      alivePlayers = [...players];
+      round = 1;
+      startNightPhase();
+    }
   }
-  return array;
-}
+
+  // ============== NIGHT PHASE ==============
+  function startNightPhase() {
+    gamePhase = 'night';
+    currentPlayer = 0;
+    mafiaVote = null;
+    detectiveTarget = null;
+    doctorTarget = null;
+
+    document.getElementById('nightPhase').classList.remove('hidden');
+    document.getElementById('dayPhase').classList.add('hidden');
+    document.getElementById('gameOver').classList.add('hidden');
+
+    const nightTitle = document.getElementById('nightTitle');
+    nightTitle.textContent = `🌙 Night Phase - Round ${round}`;
+
+    // Reset displays
+    document.getElementById('mafiaTurn').classList.add('hidden');
+    document.getElementById('detectiveTurn').classList.add('hidden');
+    document.getElementById('doctorTurn').classList.add('hidden');
+    document.getElementById('nightWaiting').classList.add('hidden');
+
+    // Mafia Turn
+    if (mafiaMembers.some(m => m.alive)) {
+      document.getElementById('mafiaTurn').classList.remove('hidden');
+      renderMafiaTargets();
+    } else if (detective && detective.alive) {
+      currentPlayer = 1; // Skip to detective
+      startDetectiveTurn();
+    } else if (doctor && doctor.alive) {
+      currentPlayer = 2; // Skip to doctor
+      startDoctorTurn();
+    } else {
+      endNightPhase();
+    }
+  }
+
+  function renderMafiaTargets() {
+    const container = document.getElementById('mafiaTargets');
+    container.innerHTML = '';
+    alivePlayers.filter(p => p.role !== 'Mafia').forEach(p => {
+      const btn = document.createElement('button');
+      btn.textContent = p.name;
+      btn.onclick = () => {
+        mafiaVote = p.id;
+        document.querySelectorAll('#mafiaTargets button').forEach(b => b.style.background = '#667eea');
+        btn.style.background = '#ff6b6b';
+      };
+      btn.style.width = '100%';
+      btn.style.margin = '5px 0';
+      btn.style.padding = '10px';
+      container.appendChild(btn);
+    });
+  }
+
+  function submitMafiaKill() {
+    if (mafiaVote === null) {
+      alert('Select a target!');
+      return;
+    }
+    document.getElementById('mafiaTurn').classList.add('hidden');
+    
+    if (detective && detective.alive) {
+      startDetectiveTurn();
+    } else if (doctor && doctor.alive) {
+      startDoctorTurn();
+    } else {
+      endNightPhase();
+    }
+  }
+
+  function startDetectiveTurn() {
+    document.getElementById('detectiveTurn').classList.remove('hidden');
+    if (detective && !detective.alive) {
+      document.getElementById('detectiveTurn').classList.add('hidden');
+      startDoctorTurn();
+      return;
+    }
+    renderDetectiveTargets();
+  }
+
+  function renderDetectiveTargets() {
+    const container = document.getElementById('detectiveTargets');
+    container.innerHTML = '';
+    alivePlayers.filter(p => p.id !== detective.id).forEach(p => {
+      const btn = document.createElement('button');
+      btn.textContent = p.name;
+      btn.onclick = () => {
+        detectiveTarget = p.id;
+        document.querySelectorAll('#detectiveTargets button').forEach(b => b.style.background = '#667eea');
+        btn.style.background = '#4ecdc4';
+      };
+      btn.style.width = '100%';
+      btn.style.margin = '5px 0';
+      btn.style.padding = '10px';
+      container.appendChild(btn);
+    });
+  }
+
+  function submitDetectiveInvestigation() {
+    if (detectiveTarget === null) {
+      alert('Select a target!');
+      return;
+    }
+    document.getElementById('detectiveTurn').classList.add('hidden');
+    
+    if (doctor && doctor.alive) {
+      startDoctorTurn();
+    } else {
+      endNightPhase();
+    }
+  }
+
+  function startDoctorTurn() {
+    document.getElementById('doctorTurn').classList.remove('hidden');
+    if (doctor && !doctor.alive) {
+      document.getElementById('doctorTurn').classList.add('hidden');
+      endNightPhase();
+      return;
+    }
+    renderDoctorTargets();
+  }
+
+  function renderDoctorTargets() {
+    const container = document.getElementById('doctorTargets');
+    container.innerHTML = '';
+    alivePlayers.forEach(p => {
+      const btn = document.createElement('button');
+      btn.textContent = p.name;
+      btn.onclick = () => {
+        doctorTarget = p.id;
+        document.querySelectorAll('#doctorTargets button').forEach(b => b.style.background = '#667eea');
+        btn.style.background = '#95e1d3';
+      };
+      btn.style.width = '100%';
+      btn.style.margin = '5px 0';
+      btn.style.padding = '10px';
+      container.appendChild(btn);
+    });
+  }
+
+  function submitDoctorSave() {
+    if (doctorTarget === null) {
+      alert('Select a target!');
+      return;
+    }
+    document.getElementById('doctorTurn').classList.add('hidden');
+    endNightPhase();
+  }
+
+  function endNightPhase() {
+    // Execute mafia kill
+    if (mafiaVote !== null) {
+      const target = players[mafiaVote];
+      if (doctorTarget !== mafiaVote) {
+        target.alive = false;
+      }
+    }
+
+    alivePlayers = players.filter(p => p.alive);
+    checkWinConditions();
+
+    if (gamePhase !== 'gameOver') {
+      startDayPhase();
+    }
+  }
+
+  // ============== DAY PHASE ==============
+  function startDayPhase() {
+    gamePhase = 'day';
+    dayVotes = {};
+
+    document.getElementById('nightPhase').classList.add('hidden');
+    document.getElementById('dayPhase').classList.remove('hidden');
+
+    const dayTitle = document.getElementById('dayTitle');
+    const dayInstructions = document.getElementById('dayInstructions');
+    
+    // Check who died
+    let killedName = 'Nobody';
+    if (mafiaVote !== null && !players[mafiaVote].alive) {
+      killedName = players[mafiaVote].name;
+    }
+
+    dayTitle.textContent = `☀️ Day Phase - Round ${round}`;
+    dayInstructions.innerHTML = `<strong>${killedName}</strong> was found dead last night!<br><br>You have time to discuss and vote someone out.`;
+
+    document.getElementById('discussionPhase').classList.remove('hidden');
+    document.getElementById('votingPhase').classList.add('hidden');
+    document.getElementById('voteResults').classList.add('hidden');
+
+    let discussionTime = 120;
+    const timer = setInterval(() => {
+      discussionTime--;
+      document.getElementById('discussionTimer').textContent = discussionTime;
+      if (discussionTime <= 0) {
+        clearInterval(timer);
+        startVoting();
+      }
+    }, 1000);
+  }
+
+  function startVoting() {
+    document.getElementById('discussionPhase').classList.add('hidden');
+    document.getElementById('votingPhase').classList.remove('hidden');
+    renderVoteTargets();
+  }
+
+  function renderVoteTargets() {
+    const container = document.getElementById('voteTargets');
+    container.innerHTML = '';
+    alivePlayers.forEach(p => {
+      const btn = document.createElement('button');
+      btn.textContent = p.name;
+      btn.onclick = () => {
+        dayVotes[currentPlayer] = p.id;
+        document.querySelectorAll('#voteTargets button').forEach(b => b.style.background = '#667eea');
+        btn.style.background = '#ffa502';
+      };
+      btn.style.width = '100%';
+      btn.style.margin = '5px 0';
+      btn.style.padding = '10px';
+      container.appendChild(btn);
+    });
+
+    currentPlayer++;
+    if (currentPlayer <= numPlayers) {
+      const voter = players.find(p => p.id === currentPlayer - 1);
+      if (voter && voter.alive) {
+        document.getElementById('votingPhase').innerHTML = `<p><strong>${voter.name}</strong>, who do you vote to eliminate?</p>` + document.getElementById('votingPhase').innerHTML;
+      }
+    } else {
+      document.getElementById('voteResults').classList.remove('hidden');
+      tallyVotes();
+    }
+  }
+
+  function tallyVotes() {
+    const voteCount = {};
+    alivePlayers.forEach(p => voteCount[p.id] = 0);
+
+    Object.values(dayVotes).forEach(vote => {
+      voteCount[vote] = (voteCount[vote] || 0) + 1;
+    });
+
+    const voteDisplay = document.getElementById('voteDisplay');
+    voteDisplay.innerHTML = '';
+    Object.entries(voteCount).forEach(([playerId, count]) => {
+      const player = players[parseInt(playerId)];
+      const item = document.createElement('div');
+      item.className = 'vote-item';
+      item.textContent = `${player.name}: ${count} votes`;
+      voteDisplay.appendChild(item);
+    });
+  }
+
+  function revealVote() {
+    const voteCount = {};
+    alivePlayers.forEach(p => voteCount[p.id] = 0);
+
+    Object.values(dayVotes).forEach(vote => {
+      voteCount[vote] = (voteCount[vote] || 0) + 1;
+    });
+
+    const maxVotes = Math.max(...Object.values(voteCount));
+    const eliminated = Object.keys(voteCount).find(id => voteCount[id] === maxVotes);
+    
+    if (eliminated) {
+      players[eliminated].alive = false;
+      alivePlayers = players.filter(p => p.alive);
+    }
+
+    checkWinConditions();
+    if (gamePhase !== 'gameOver') {
+      round++;
+      startNightPhase();
+    }
+  }
+
+  // ============== WIN CONDITIONS ==============
+  function checkWinConditions() {
+    const mafiasAlive = alivePlayers.filter(p => p.role === 'Mafia').length;
+    const villagersAlive = alivePlayers.filter(p => p.role !== 'Mafia').length;
+
+    if (mafiasAlive === 0) {
+      endGame('Village', 'The village has defeated the Mafia!');
+    } else if (mafiasAlive >= villagersAlive) {
+      endGame('Mafia', 'The Mafia has taken over the village!');
+    }
+  }
+
+  function endGame(winner, message) {
+    gamePhase = 'gameOver';
+    document.getElementById('nightPhase').classList.add('hidden');
+    document.getElementById('dayPhase').classList.add('hidden');
+    document.getElementById('gameOver').classList.remove('hidden');
+
+    document.getElementById('gameOverTitle').textContent = `${winner} Wins!`;
+    document.getElementById('gameOverMessage').textContent = message;
+
+    let stats = '<h3>Final Stats:</h3>';
+    players.forEach(p => {
+      stats += `<p><strong>${p.name}</strong> - ${p.role} ${!p.alive ? '(eliminated)' : '(survivor)'}</p>`;
+    });
+    document.getElementById('finalStats').innerHTML = stats;
+  }
+
+  // ============== UTILITIES ==============
+  function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
 </script>
+</body>
+</html>
