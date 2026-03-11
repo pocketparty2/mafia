@@ -452,7 +452,7 @@
     }
 
     #gameOverTitle.jester {
-      color: #e91e63;
+      color: #ff69b4;
     }
 
     #gameOverMessage {
@@ -481,7 +481,7 @@
     }
 
     .alignment-title.neutral {
-      color: #e91e63;
+      color: #ff69b4;
     }
 
     .alignment-title.village {
@@ -519,7 +519,8 @@
     }
 
     .player-tile.neutral {
-      border-color: #e91e63;
+      border-color: #ffb3d9;
+      background: #fff0f6;
     }
 
     .player-tile.winner {
@@ -780,7 +781,7 @@
     },
     jester: {
       title: '🤡 Jester',
-      description: 'Wins by getting voted out during the day. Acts as a wild card trying to get eliminated rather than survive. Does NOT win if murdered or killed by any other means.'
+      description: 'Wins ALONE by getting voted out during the day. Acts as a wild card trying to get eliminated rather than survive. Does NOT win if murdered or killed by any other means.'
     }
   };
 
@@ -1413,13 +1414,19 @@
         const deathInfo = playerDeathReasons[p.id];
         const isWinner = winner === 'Mafia';
         const tileClass = isWinner ? 'player-tile mafia winner' : 'player-tile mafia';
+        
+        let statusText = '';
+        if (winner === 'Jester') {
+          statusText = p.alive ? 'Eliminated by Jester' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Game Over');
+        } else {
+          statusText = p.alive ? 'Survivor' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Round 1<br>Game Over');
+        }
+        
         statsHTML += `
           <div class="${tileClass}">
             <div class="tile-emoji">${roleEmojis[p.role]}</div>
             <div class="tile-name">${p.name}</div>
-            <div class="tile-info">
-              ${p.alive ? 'Survivor' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Round 1<br>Game Over')}
-            </div>
+            <div class="tile-info">${statusText}</div>
           </div>
         `;
       });
@@ -1435,13 +1442,19 @@
         const deathInfo = playerDeathReasons[p.id];
         const isWinner = winner === 'Jester';
         const tileClass = isWinner ? 'player-tile neutral winner' : 'player-tile neutral';
+        
+        let statusText = '';
+        if (winner === 'Jester') {
+          statusText = p.alive ? 'Survivor' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Game Over');
+        } else {
+          statusText = p.alive ? 'Survivor' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Game Over');
+        }
+        
         statsHTML += `
           <div class="${tileClass}">
             <div class="tile-emoji">${roleEmojis[p.role]}</div>
             <div class="tile-name">${p.name}</div>
-            <div class="tile-info">
-              ${p.alive ? 'Survivor' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Round 1<br>Game Over')}
-            </div>
+            <div class="tile-info">${statusText}</div>
           </div>
         `;
       });
@@ -1457,13 +1470,19 @@
         const deathInfo = playerDeathReasons[p.id];
         const isWinner = winner === 'Village';
         const tileClass = isWinner ? 'player-tile village winner' : 'player-tile village';
+        
+        let statusText = '';
+        if (winner === 'Jester') {
+          statusText = p.alive ? 'Eliminated by Jester' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Game Over');
+        } else {
+          statusText = p.alive ? 'Survivor' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Round 1<br>Game Over');
+        }
+        
         statsHTML += `
           <div class="${tileClass}">
             <div class="tile-emoji">${roleEmojis[p.role]}</div>
             <div class="tile-name">${p.name}</div>
-            <div class="tile-info">
-              ${p.alive ? 'Survivor' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Round 1<br>Game Over')}
-            </div>
+            <div class="tile-info">${statusText}</div>
           </div>
         `;
       });
