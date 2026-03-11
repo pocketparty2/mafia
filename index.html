@@ -737,7 +737,7 @@
     <div class="role-reveal-banner">
       <div class="name" id="revealedPlayerName"></div>
       <div class="role" id="revealedPlayerRole"></div>
-      <div class="instruction">has been voted out</div>
+      <div class="instruction" id="revealedInstruction">has been voted out</div>
     </div>
     <button onclick="proceedToNextRound()">Continue</button>
   </div>
@@ -780,7 +780,7 @@
     },
     jester: {
       title: '🤡 Jester',
-      description: 'Wins by getting voted out during the day. Acts as a wild card trying to get eliminated rather than survive.'
+      description: 'Wins by getting voted out during the day. Acts as a wild card trying to get eliminated rather than survive. Does NOT win if murdered or killed by any other means.'
     }
   };
 
@@ -874,13 +874,10 @@
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     
     if (winner === 'Village') {
-      // Confetti sound - high pitched cheerful tones
       playConfettiSound(audioContext);
     } else if (winner === 'Jester') {
-      // Giggle sound
       playGiggleSound(audioContext);
     } else if (winner === 'Mafia') {
-      // Suspicious/murderous sound
       playSuspiciousSound(audioContext);
     }
   }
@@ -1338,13 +1335,14 @@
       return;
     }
 
-    players[dayVoteTarget].alive = false;
+    const eliminatedPlayer = players[dayVoteTarget];
+    eliminatedPlayer.alive = false;
     eliminatedThisRound = dayVoteTarget;
     playerDeathReasons[dayVoteTarget] = { round: round, reason: 'Voted Out' };
     alivePlayers = players.filter(p => p.alive);
 
-    // Check if jester won
-    if (players[dayVoteTarget].role === 'Jester') {
+    // Check if jester won (ONLY if voted out, not murdered)
+    if (eliminatedPlayer.role === 'Jester') {
       endGame('Jester', 'The Jester has won by being voted out!');
     } else {
       checkWinConditions();
@@ -1361,6 +1359,7 @@
     const eliminatedPlayer = players[eliminatedThisRound];
     document.getElementById('revealedPlayerName').textContent = eliminatedPlayer.name;
     document.getElementById('revealedPlayerRole').textContent = eliminatedPlayer.role;
+    document.getElementById('revealedInstruction').textContent = 'has been voted out';
   }
 
   function proceedToNextRound() {
@@ -1388,7 +1387,6 @@
     document.getElementById('roleRevealPhase').classList.add('hidden');
     document.getElementById('gameOver').classList.remove('hidden');
 
-    // Set title color and play sound
     const titleElement = document.getElementById('gameOverTitle');
     if (winner === 'Village') {
       titleElement.textContent = `Village Wins! 🎉`;
@@ -1404,10 +1402,8 @@
     playGameOverSound(winner);
     document.getElementById('gameOverMessage').textContent = message;
 
-    // Build player tiles by alignment
     let statsHTML = '';
 
-    // Mafia section
     const mafiaPlayers = players.filter(p => p.role === 'Mafia');
     if (mafiaPlayers.length > 0) {
       statsHTML += '<div class="alignment-section">';
@@ -1430,7 +1426,6 @@
       statsHTML += '</div></div>';
     }
 
-    // Neutral section (Jester)
     const jesterPlayers = players.filter(p => p.role === 'Jester');
     if (jesterPlayers.length > 0) {
       statsHTML += '<div class="alignment-section">';
@@ -1453,7 +1448,6 @@
       statsHTML += '</div></div>';
     }
 
-    // Village section
     const villagePlayers = players.filter(p => p.role !== 'Mafia' && p.role !== 'Jester');
     if (villagePlayers.length > 0) {
       statsHTML += '<div class="alignment-section">';
