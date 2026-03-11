@@ -224,6 +224,11 @@
       color: #2e7d32;
     }
 
+    .investigation-result.neutral {
+      background: #ffb3d9;
+      color: #ff69b4;
+    }
+
     .voted-out {
       background: #fff9c4;
       padding: 20px;
@@ -583,7 +588,7 @@
 <div class="container">
   <!-- Setup Phase -->
   <div id="setup">
-    <h1>🔪 Moderator-Free Mafia TURKEY 🔪</h1>
+    <h1>🔪 Mafia 🔪</h1>
     
     <h3>Number of Players: <span id="playerCountDisplay">7</span></h3>
     <input type="range" id="numPlayers" min="4" max="15" value="7" oninput="updatePlayerCount()">
@@ -672,7 +677,7 @@
     <div id="sleepingScreen" class="hidden">
       <div class="sleeping-screen">
         <p style="font-size: 1.5em; margin-bottom: 20px;">😴 Everyone close your eyes...</p>
-        <div class="sleeping-timer" id="sleepTimer">8</div>
+        <div class="sleeping-timer" id="sleepTimer">5</div>
         <p style="color: #aaa;">The night begins in a few moments.</p>
       </div>
     </div>
@@ -690,7 +695,7 @@
     <!-- Detective Turn -->
     <div id="detectiveTurn" class="hidden">
       <div style="text-align: center; margin: 20px 0;">
-        <p style="font-size: 1.3em; font-weight: bold; color: #1976d2;">�� Who would you like to investigate?</p>
+        <p style="font-size: 1.3em; font-weight: bold; color: #1976d2;">🔍 Who would you like to investigate?</p>
         <p style="color: #666; margin-top: 10px;">Everyone else: keep your eyes closed!</p>
       </div>
       <div id="detectiveTargets" class="player-list"></div>
@@ -799,7 +804,7 @@
     },
     detective: {
       title: '🔍 Detective',
-      description: 'Each night, can investigate one player to learn if they are Mafia or Village-aligned. Helps the village find the Mafia.'
+      description: 'Each night, can investigate one player to learn if they are Mafia or Neutral. Helps the village find the Mafia.'
     },
     doctor: {
       title: '💊 Doctor',
@@ -807,7 +812,7 @@
     },
     jester: {
       title: '🤡 Jester',
-      description: 'Wins ALONE by getting voted out during the day. Acts as a wild card trying to get eliminated rather than survive. Does NOT win if murdered or killed by any other means.'
+      description: 'Wins ALONE by getting voted out during the day. Acts as a wild card trying to get eliminated rather than survive. Does NOT win if murdered or if they survive until the end.'
     }
   };
 
@@ -1102,7 +1107,7 @@
     document.getElementById('wakeUpScreen').classList.add('hidden');
 
     await speak('Everybody go to sleep.');
-    let sleepTimer = 8;
+    let sleepTimer = 5;
     document.getElementById('sleepTimer').textContent = sleepTimer;
 
     const sleepInterval = setInterval(() => {
@@ -1191,7 +1196,14 @@
       btn.onclick = () => {
         const targetId = p.id;
         const targetPlayer = players[targetId];
-        const alignment = targetPlayer.role === 'Mafia' ? 'Mafia' : 'Village';
+        let alignment = '';
+        if (targetPlayer.role === 'Mafia') {
+          alignment = 'Mafia';
+        } else if (targetPlayer.role === 'Jester') {
+          alignment = 'Neutral';
+        } else {
+          alignment = 'Village';
+        }
         
         detectiveTargets.push(detective.id);
         detectiveResults[detective.id] = { target: p.name, alignment: alignment };
@@ -1467,15 +1479,17 @@
       statsHTML += '<div class="player-tiles">';
       jesterPlayers.forEach(p => {
         const deathInfo = playerDeathReasons[p.id];
-        const isWinner = winner === 'Jester';
+        const isWinner = winner === 'Jester' && !p.alive;
         const isDead = !p.alive;
-        const tileClass = isWinner && isDead ? 'player-tile neutral winner' : (isDead ? 'player-tile neutral dead' : 'player-tile neutral');
+        const tileClass = isWinner ? 'player-tile neutral winner' : (isDead ? 'player-tile neutral dead' : 'player-tile neutral dead');
         
         let statusText = '';
-        if (winner === 'Jester') {
-          statusText = p.alive ? 'Survivor' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Game Over');
+        if (p.alive) {
+          statusText = 'Failed to win';
+        } else if (deathInfo && deathInfo.reason === 'Voted Out') {
+          statusText = `Round ${deathInfo.round}<br>Voted Out`;
         } else {
-          statusText = p.alive ? 'Survivor' : (deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Game Over');
+          statusText = deathInfo ? `Round ${deathInfo.round}<br>${deathInfo.reason}` : 'Game Over';
         }
         
         statsHTML += `
