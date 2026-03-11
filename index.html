@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MAFIA</title>
+  <title>Moderator-Free Mafia</title>
   <style>
     * {
       margin: 0;
@@ -223,13 +223,25 @@
       text-align: center;
       color: #2e7d32;
     }
+
+    .dead-person-banner {
+      background: #ffcdd2;
+      border: 4px solid #c62828;
+      padding: 30px;
+      border-radius: 15px;
+      margin: 20px 0;
+      text-align: center;
+      font-size: 2em;
+      font-weight: bold;
+      color: #c62828;
+    }
   </style>
 </head>
 <body>
 <div class="container">
   <!-- Setup Phase -->
   <div id="setup">
-    <h1>🔪 Moderator-Free Mafia 🔪</h1>
+    <h1>🔪 Moderator-Free Mafia DUCK 🔪</h1>
     <label>Number of Players: <input type="number" id="numPlayers" min="4" max="15" value="7"></label>
     <button onclick="startPlayerSetup()">Start Game</button>
   </div>
@@ -316,6 +328,14 @@
   <!-- Day Phase -->
   <div id="dayPhase" class="hidden">
     <h2 id="dayTitle">☀️ Day Phase</h2>
+    
+    <!-- Dead Person Banner -->
+    <div id="deadPersonBanner" class="hidden">
+      <div class="dead-person-banner">
+        💀 <span id="deadPersonName"></span> was found DEAD! 💀
+      </div>
+    </div>
+
     <p id="dayInstructions"></p>
     
     <div id="discussionPhase" class="hidden">
@@ -573,7 +593,6 @@
       alert('Select a target!');
       return;
     }
-    speak('Detective, go to sleep.');
     document.getElementById('detectiveTurn').classList.add('hidden');
     
     setTimeout(() => {
@@ -592,13 +611,16 @@
   }
 
   function acknowledgeInvestigation() {
+    speak('Detective, go to sleep.');
     document.getElementById('detectiveResult').classList.add('hidden');
     
-    if (doctor && doctor.alive) {
-      startDoctorTurn();
-    } else {
-      endNightPhase();
-    }
+    setTimeout(() => {
+      if (doctor && doctor.alive) {
+        startDoctorTurn();
+      } else {
+        endNightPhase();
+      }
+    }, 1500);
   }
 
   function startDoctorTurn() {
@@ -682,10 +704,14 @@
     eliminatedThisRound = null;
     if (mafiaVote !== null && !players[mafiaVote].alive) {
       killedName = players[mafiaVote].name;
+      document.getElementById('deadPersonBanner').classList.remove('hidden');
+      document.getElementById('deadPersonName').textContent = killedName;
+    } else {
+      document.getElementById('deadPersonBanner').classList.add('hidden');
     }
 
     dayTitle.textContent = `☀️ Day Phase - Round ${round}`;
-    dayInstructions.innerHTML = `<strong>${killedName}</strong> was found dead last night!<br><br>You have time to discuss and decide who to vote out.`;
+    dayInstructions.innerHTML = `You have time to discuss and decide who to vote out.`;
 
     document.getElementById('discussionPhase').classList.remove('hidden');
     document.getElementById('votingPhase').classList.add('hidden');
@@ -787,4 +813,3 @@
 </script>
 </body>
 </html>
-
