@@ -167,6 +167,36 @@
       background: white;
       border-radius: 5px;
     }
+
+    .investigation-result {
+      background: #e3f2fd;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+      text-align: center;
+      font-size: 1.3em;
+      font-weight: bold;
+    }
+
+    .investigation-result.mafia {
+      background: #ffcdd2;
+      color: #c62828;
+    }
+
+    .investigation-result.village {
+      background: #c8e6c9;
+      color: #2e7d32;
+    }
+
+    .voted-out {
+      background: #fff9c4;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+      text-align: center;
+      font-size: 1.3em;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -209,9 +239,15 @@
     </div>
 
     <div id="detectiveTurn" class="hidden">
-      <h3>Detective - Investigate someone:</h3>
+      <h3>Detective - Investigate someone to learn their alignment:</h3>
       <div id="detectiveTargets" class="player-list"></div>
       <button onclick="submitDetectiveInvestigation()">Submit Investigation</button>
+    </div>
+
+    <div id="detectiveResult" class="hidden">
+      <p style="margin-bottom: 20px;">You investigated <strong id="investigatedName"></strong>:</p>
+      <div class="investigation-result" id="alignmentResult"></div>
+      <button onclick="acknowledgeInvestigation()">Proceed</button>
     </div>
 
     <div id="doctorTurn" class="hidden">
@@ -234,20 +270,23 @@
     <p id="dayInstructions"></p>
     
     <div id="discussionPhase" class="hidden">
-      <p style="text-align: center; margin: 20px 0;">
-        You have <span id="discussionTimer">120</span> seconds to discuss and vote.
+      <p style="text-align: center; margin: 20px 0; font-size: 1.3em; font-weight: bold;">
+        You have <span id="discussionTimer">120</span> seconds to discuss and decide.
       </p>
-      <button onclick="startVoting()">Start Voting</button>
+      <p style="text-align: center; color: #666;">Discuss in person, then select who to vote out by majority.</p>
+      <button onclick="startVoting()">Everyone Ready - Select Elimination</button>
     </div>
 
     <div id="votingPhase" class="hidden">
-      <p>Who do you vote to eliminate?</p>
+      <p style="text-align: center; margin-bottom: 20px; font-weight: bold;">Who should be voted out?</p>
       <div id="voteTargets" class="player-list"></div>
-      <div id="voteResults" class="hidden">
-        <h3>Vote Tally:</h3>
-        <div id="voteDisplay" class="vote-display"></div>
-        <button onclick="revealVote()">Reveal Results</button>
-      </div>
+    </div>
+
+    <div id="votingConfirm" class="hidden">
+      <p style="text-align: center; font-weight: bold;">Selected for elimination:</p>
+      <p style="text-align: center; font-size: 1.5em; color: #667eea;" id="selectedTarget"></p>
+      <button onclick="confirmElimination()">Confirm & Continue</button>
+      <button onclick="startVoting()" style="background: #999; margin-top: 10px;">Change Selection</button>
     </div>
   </div>
 
@@ -273,13 +312,15 @@
   // Night action tracking
   let mafiaVote = null;
   let detectiveTarget = null;
+  let detectiveResult = null;
   let doctorTarget = null;
   let mafiaMembers = [];
   let detective = null;
   let doctor = null;
 
   // Day action tracking
-  let dayVotes = {};
+  let dayVoteTarget = null;
+  let eliminatedThisRound = null;
 
   // ============== SETUP PHASE ==============
   function startPlayerSetup() {
@@ -348,6 +389,7 @@
     currentPlayer = 0;
     mafiaVote = null;
     detectiveTarget = null;
+    detectiveResult = null;
     doctorTarget = null;
 
     document.getElementById('nightPhase').classList.remove('hidden');
@@ -360,6 +402,7 @@
     // Reset displays
     document.getElementById('mafiaTurn').classList.add('hidden');
     document.getElementById('detectiveTurn').classList.add('hidden');
+    document.getElementById('detectiveResult').classList.add('hidden');
     document.getElementById('doctorTurn').classList.add('hidden');
     document.getElementById('nightWaiting').classList.add('hidden');
 
@@ -447,6 +490,22 @@
     }
     document.getElementById('detectiveTurn').classList.add('hidden');
     
+    // Show investigation result
+    const targetPlayer = players[detectiveTarget];
+    const alignment = targetPlayer.role === 'Mafia' ? 'Mafia' : 'Village';
+    
+    document.getElementById('investigatedName').textContent = targetPlayer.name;
+    const resultDiv = document.getElementById('alignmentResult');
+    resultDiv.textContent = alignment;
+    resultDiv.className = `investigation-result ${alignment.toLowerCase()}`;
+    
+    detectiveResult = alignment;
+    document.getElementById('detectiveResult').classList.remove('hidden');
+  }
+
+  function acknowledgeInvestigation() {
+    document.getElementById('detectiveResult').classList.add('hidden');
+    
     if (doctor && doctor.alive) {
       startDoctorTurn();
     } else {
@@ -511,7 +570,7 @@
   // ============== DAY PHASE ==============
   function startDayPhase() {
     gamePhase = 'day';
-    dayVotes = {};
+    dayVoteTarget = null;
 
     document.getElementById('nightPhase').classList.add('hidden');
     document.getElementById('dayPhase').classList.remove('hidden');
@@ -521,16 +580,17 @@
     
     // Check who died
     let killedName = 'Nobody';
+    eliminatedThisRound = null;
     if (mafiaVote !== null && !players[mafiaVote].alive) {
       killedName = players[mafiaVote].name;
     }
 
     dayTitle.textContent = `☀️ Day Phase - Round ${round}`;
-    dayInstructions.innerHTML = `<strong>${killedName}</strong> was found dead last night!<br><br>You have time to discuss and vote someone out.`;
+    dayInstructions.innerHTML = `<strong>${killedName}</strong> was found dead last night!<br><br>You have time to discuss and decide who to vote out.`;
 
     document.getElementById('discussionPhase').classList.remove('hidden');
     document.getElementById('votingPhase').classList.add('hidden');
-    document.getElementById('voteResults').classList.add('hidden');
+    document.getElementById('votingConfirm').classList.add('hidden');
 
     let discussionTime = 120;
     const timer = setInterval(() => {
@@ -538,7 +598,6 @@
       document.getElementById('discussionTimer').textContent = discussionTime;
       if (discussionTime <= 0) {
         clearInterval(timer);
-        startVoting();
       }
     }, 1000);
   }
@@ -546,6 +605,7 @@
   function startVoting() {
     document.getElementById('discussionPhase').classList.add('hidden');
     document.getElementById('votingPhase').classList.remove('hidden');
+    dayVoteTarget = null;
     renderVoteTargets();
   }
 
@@ -556,62 +616,31 @@
       const btn = document.createElement('button');
       btn.textContent = p.name;
       btn.onclick = () => {
-        dayVotes[currentPlayer] = p.id;
+        dayVoteTarget = p.id;
         document.querySelectorAll('#voteTargets button').forEach(b => b.style.background = '#667eea');
         btn.style.background = '#ffa502';
+        
+        // Show confirmation
+        document.getElementById('votingPhase').classList.add('hidden');
+        document.getElementById('votingConfirm').classList.remove('hidden');
+        document.getElementById('selectedTarget').textContent = players[p.id].name;
       };
       btn.style.width = '100%';
       btn.style.margin = '5px 0';
       btn.style.padding = '10px';
       container.appendChild(btn);
     });
-
-    currentPlayer++;
-    if (currentPlayer <= numPlayers) {
-      const voter = players.find(p => p.id === currentPlayer - 1);
-      if (voter && voter.alive) {
-        document.getElementById('votingPhase').innerHTML = `<p><strong>${voter.name}</strong>, who do you vote to eliminate?</p>` + document.getElementById('votingPhase').innerHTML;
-      }
-    } else {
-      document.getElementById('voteResults').classList.remove('hidden');
-      tallyVotes();
-    }
   }
 
-  function tallyVotes() {
-    const voteCount = {};
-    alivePlayers.forEach(p => voteCount[p.id] = 0);
-
-    Object.values(dayVotes).forEach(vote => {
-      voteCount[vote] = (voteCount[vote] || 0) + 1;
-    });
-
-    const voteDisplay = document.getElementById('voteDisplay');
-    voteDisplay.innerHTML = '';
-    Object.entries(voteCount).forEach(([playerId, count]) => {
-      const player = players[parseInt(playerId)];
-      const item = document.createElement('div');
-      item.className = 'vote-item';
-      item.textContent = `${player.name}: ${count} votes`;
-      voteDisplay.appendChild(item);
-    });
-  }
-
-  function revealVote() {
-    const voteCount = {};
-    alivePlayers.forEach(p => voteCount[p.id] = 0);
-
-    Object.values(dayVotes).forEach(vote => {
-      voteCount[vote] = (voteCount[vote] || 0) + 1;
-    });
-
-    const maxVotes = Math.max(...Object.values(voteCount));
-    const eliminated = Object.keys(voteCount).find(id => voteCount[id] === maxVotes);
-    
-    if (eliminated) {
-      players[eliminated].alive = false;
-      alivePlayers = players.filter(p => p.alive);
+  function confirmElimination() {
+    if (dayVoteTarget === null) {
+      alert('Select a target!');
+      return;
     }
+
+    players[dayVoteTarget].alive = false;
+    eliminatedThisRound = dayVoteTarget;
+    alivePlayers = players.filter(p => p.alive);
 
     checkWinConditions();
     if (gamePhase !== 'gameOver') {
