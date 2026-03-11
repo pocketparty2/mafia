@@ -241,7 +241,7 @@
 <div class="container">
   <!-- Setup Phase -->
   <div id="setup">
-    <h1>🔪 Moderator-Free Mafia DUCK 🔪</h1>
+    <h1>🔪 Moderator-Free Mafia TURKEY 🔪</h1>
     <label>Number of Players: <input type="number" id="numPlayers" min="4" max="15" value="7"></label>
     <button onclick="startPlayerSetup()">Start Game</button>
   </div>
@@ -372,7 +372,6 @@
   // ============== TEXT-TO-SPEECH FUNCTION ==============
   function speak(text) {
     if ('speechSynthesis' in window) {
-      // Cancel any ongoing speech
       speechSynthesis.cancel();
       
       const utterance = new SpeechSynthesisUtterance(text);
@@ -388,17 +387,17 @@
   let players = [];
   let roleList = ['Mafia', 'Mafia', 'Detective', 'Doctor', 'Jester'];
   let currentPlayer = 0;
-  let gamePhase = 'setup'; // setup, naming, night, day, gameOver
+  let gamePhase = 'setup';
   let round = 0;
   let alivePlayers = [];
 
   // Night action tracking
   let mafiaVote = null;
-  let detectiveTarget = null;
-  let detectiveResult = null;
+  let detectiveTargets = [];
+  let detectiveResults = {};
   let doctorTarget = null;
   let mafiaMembers = [];
-  let detective = null;
+  let detectives = [];
   let doctor = null;
 
   // Day action tracking
@@ -430,7 +429,7 @@
 
     // Identify special roles
     mafiaMembers = players.filter(p => p.role === 'Mafia');
-    detective = players.find(p => p.role === 'Detective');
+    detectives = players.filter(p => p.role === 'Detective');
     doctor = players.find(p => p.role === 'Doctor');
 
     updatePlayerPrompt();
@@ -471,8 +470,8 @@
     gamePhase = 'night';
     currentPlayer = 0;
     mafiaVote = null;
-    detectiveTarget = null;
-    detectiveResult = null;
+    detectiveTargets = [];
+    detectiveResults = {};
     doctorTarget = null;
 
     document.getElementById('nightPhase').classList.remove('hidden');
@@ -482,7 +481,6 @@
     const nightTitle = document.getElementById('nightTitle');
     nightTitle.textContent = `🌙 Night Phase - Round ${round}`;
 
-    // Reset displays
     document.getElementById('sleepingScreen').classList.remove('hidden');
     document.getElementById('mafiaTurn').classList.add('hidden');
     document.getElementById('detectiveTurn').classList.add('hidden');
@@ -490,7 +488,6 @@
     document.getElementById('doctorTurn').classList.add('hidden');
     document.getElementById('wakeUpScreen').classList.add('hidden');
 
-    // Start sleeping timer and audio
     speak('Everybody go to sleep.');
     let sleepTimer = 10;
     document.getElementById('sleepTimer').textContent = sleepTimer;
@@ -502,10 +499,9 @@
         clearInterval(sleepInterval);
         document.getElementById('sleepingScreen').classList.add('hidden');
         
-        // Start with Mafia
         if (mafiaMembers.some(m => m.alive)) {
           startMafiaTurn();
-        } else if (detective && detective.alive) {
+        } else if (detectives.some(d => d.alive)) {
           startDetectiveTurn();
         } else if (doctor && doctor.alive) {
           startDoctorTurn();
@@ -549,7 +545,7 @@
     document.getElementById('mafiaTurn').classList.add('hidden');
     
     setTimeout(() => {
-      if (detective && detective.alive) {
+      if (detectives.some(d => d.alive)) {
         startDetectiveTurn();
       } else if (doctor && doctor.alive) {
         startDoctorTurn();
@@ -560,26 +556,43 @@
   }
 
   function startDetectiveTurn() {
-    speak('Detective, wake up. Who would you like to investigate?');
-    document.getElementById('detectiveTurn').classList.remove('hidden');
-    if (detective && !detective.alive) {
-      document.getElementById('detectiveTurn').classList.add('hidden');
+    const aliveDetectives = detectives.filter(d => d.alive);
+    if (aliveDetectives.length === 0) {
       startDoctorTurn();
       return;
     }
-    renderDetectiveTargets();
+
+    const currentDetective = aliveDetectives[0];
+    speak(`${currentDetective.name}, detective, wake up. Who would you like to investigate?`);
+    document.getElementById('detectiveTurn').classList.remove('hidden');
+    renderDetectiveTargets(currentDetective);
   }
 
-  function renderDetectiveTargets() {
+  function renderDetectiveTargets(detective) {
     const container = document.getElementById('detectiveTargets');
     container.innerHTML = '';
     alivePlayers.filter(p => p.id !== detective.id).forEach(p => {
       const btn = document.createElement('button');
       btn.textContent = p.name;
       btn.onclick = () => {
-        detectiveTarget = p.id;
-        document.querySelectorAll('#detectiveTargets button').forEach(b => b.style.background = '#667eea');
-        btn.style.background = '#4ecdc4';
+        const targetId = p.id;
+        const targetPlayer = players[targetId];
+        const alignment = targetPlayer.role === 'Mafia' ? 'Mafia' : 'Village';
+        
+        detectiveTargets.push(detective.id);
+        detectiveResults[detective.id] = { target: p.name, alignment: alignment };
+
+        document.getElementById('detectiveTurn').classList.add('hidden');
+        speak(`${detective.name}, detective, go to sleep.`);
+
+        setTimeout(() => {
+          document.getElementById('investigatedName').textContent = p.name;
+          const resultDiv = document.getElementById('alignmentResult');
+          resultDiv.textContent = alignment;
+          resultDiv.className = `investigation-result ${alignment.toLowerCase()}`;
+          
+          document.getElementById('detectiveResult').classList.remove('hidden');
+        }, 1500);
       };
       btn.style.width = '100%';
       btn.style.margin = '5px 0';
@@ -588,39 +601,17 @@
     });
   }
 
-  function submitDetectiveInvestigation() {
-    if (detectiveTarget === null) {
-      alert('Select a target!');
-      return;
-    }
-    document.getElementById('detectiveTurn').classList.add('hidden');
-    
-    setTimeout(() => {
-      // Show investigation result
-      const targetPlayer = players[detectiveTarget];
-      const alignment = targetPlayer.role === 'Mafia' ? 'Mafia' : 'Village';
-      
-      document.getElementById('investigatedName').textContent = targetPlayer.name;
-      const resultDiv = document.getElementById('alignmentResult');
-      resultDiv.textContent = alignment;
-      resultDiv.className = `investigation-result ${alignment.toLowerCase()}`;
-      
-      detectiveResult = alignment;
-      document.getElementById('detectiveResult').classList.remove('hidden');
-    }, 1500);
-  }
-
   function acknowledgeInvestigation() {
-    speak('Detective, go to sleep.');
     document.getElementById('detectiveResult').classList.add('hidden');
     
-    setTimeout(() => {
-      if (doctor && doctor.alive) {
-        startDoctorTurn();
-      } else {
-        endNightPhase();
-      }
-    }, 1500);
+    const aliveDetectives = detectives.filter(d => d.alive && !detectiveTargets.includes(d.id));
+    if (aliveDetectives.length > 0) {
+      startDetectiveTurn();
+    } else if (doctor && doctor.alive) {
+      startDoctorTurn();
+    } else {
+      endNightPhase();
+    }
   }
 
   function startDoctorTurn() {
@@ -699,7 +690,6 @@
     const dayTitle = document.getElementById('dayTitle');
     const dayInstructions = document.getElementById('dayInstructions');
     
-    // Check who died
     let killedName = 'Nobody';
     eliminatedThisRound = null;
     if (mafiaVote !== null && !players[mafiaVote].alive) {
@@ -745,7 +735,6 @@
         document.querySelectorAll('#voteTargets button').forEach(b => b.style.background = '#667eea');
         btn.style.background = '#ffa502';
         
-        // Show confirmation
         document.getElementById('votingPhase').classList.add('hidden');
         document.getElementById('votingConfirm').classList.remove('hidden');
         document.getElementById('selectedTarget').textContent = players[p.id].name;
@@ -770,6 +759,7 @@
     checkWinConditions();
     if (gamePhase !== 'gameOver') {
       round++;
+      speechSynthesis.cancel();
       startNightPhase();
     }
   }
