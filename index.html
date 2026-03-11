@@ -1,6 +1,105 @@
-git init
-git add index.html
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/YOURUSERNAME/mafia-game.git
-git push -u origin main
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mafia Game</title>
+<style>
+  body { font-family: sans-serif; text-align: center; padding: 20px; background: #222; color: #eee; }
+  button { margin: 10px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
+  input { padding: 5px; font-size: 14px; margin: 5px; }
+  #nameInputs input { display: block; margin: 10px auto; width: 200px; }
+  h1,h2 { margin-bottom: 20px; }
+  #roleDisplay { font-size: 20px; margin: 20px; }
+</style>
+</head>
+<body>
+
+<h1>Moderator-Free Mafia Game</h1>
+
+<div id="setup">
+  <label>Number of Players: <input type="number" id="numPlayers" min="4" max="15" value="7"></label><br>
+  <button onclick="startSetup()">Start Setup</button>
+</div>
+
+<div id="playerNames" style="display:none;">
+  <h2>Enter Player Names</h2>
+  <div id="nameInputs"></div>
+  <button onclick="assignRoles()">Assign Roles</button>
+</div>
+
+<div id="gameArea" style="display:none;">
+  <h2>Pass the phone to each player</h2>
+  <div id="roleDisplay"></div>
+  <button onclick="nextPlayer()">Next Player</button>
+</div>
+
+<script>
+let numPlayers, players=[], roles=[], currentPlayer=0;
+
+// Default roles
+let roleList = ['Mafia', 'Mafia', 'Detective', 'Doctor', 'Jester'];
+
+function startSetup() {
+  numPlayers = parseInt(document.getElementById('numPlayers').value);
+  document.getElementById('setup').style.display='none';
+  document.getElementById('playerNames').style.display='block';
+  
+  const inputsDiv = document.getElementById('nameInputs');
+  inputsDiv.innerHTML = '';
+  for(let i=0;i<numPlayers;i++){
+    const input = document.createElement('input');
+    input.placeholder = 'Player '+(i+1);
+    inputsDiv.appendChild(input);
+  }
+}
+
+function assignRoles() {
+  const inputs = document.querySelectorAll('#nameInputs input');
+  players = Array.from(inputs).map(input => ({name: input.value || 'Player', role: ''}));
+
+  // Add Villagers if roleList is too short
+  let assignedRoles = [...roleList];
+  while(assignedRoles.length < numPlayers){
+    assignedRoles.push('Villager');
+  }
+  assignedRoles = shuffleArray(assignedRoles);
+
+  players.forEach((player,i) => player.role = assignedRoles[i]);
+  
+  document.getElementById('playerNames').style.display='none';
+  document.getElementById('gameArea').style.display='block';
+  currentPlayer=0;
+  showRole();
+}
+
+function showRole() {
+  const player = players[currentPlayer];
+  const roleDiv = document.getElementById('roleDisplay');
+  roleDiv.textContent = `Player: ${player.name}, listen to your role.`;
+
+  // Audio instructions
+  let msg = new SpeechSynthesisUtterance(`Hello ${player.name}, your role is ${player.role}`);
+  speechSynthesis.speak(msg);
+}
+
+function nextPlayer() {
+  currentPlayer++;
+  if(currentPlayer < players.length){
+    showRole();
+  } else {
+    alert('All roles assigned! Start the game discussion.');
+    document.getElementById('gameArea').style.display='none';
+  }
+}
+
+function shuffleArray(array) {
+  for(let i=array.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+</script>
+
+</body>
+</html>
